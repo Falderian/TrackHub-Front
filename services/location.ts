@@ -3,10 +3,6 @@ import * as TaskManager from "expo-task-manager";
 
 const TASK_NAME = "TRACKHUB_LOCATION";
 
-// ---------------------------------------------------------------------------
-// Shared store (module-level — survives backgrounding, readable by UI + task)
-// ---------------------------------------------------------------------------
-
 type Coords = {
 	latitude: number;
 	longitude: number;
@@ -16,8 +12,8 @@ export type RideState = {
 	running: boolean;
 	paused: boolean;
 	startedAt: number | null;
-	totalElapsed: number; // accumulated seconds from completed segments
-	distance: number; // meters
+	totalElapsed: number;
+	distance: number;
 	locations: Coords[];
 };
 
@@ -36,12 +32,8 @@ function notify() {
 	listeners.forEach((fn) => fn());
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 function haversine(a: Coords, b: Coords): number {
-	const R = 6_371_000; // Earth radius in meters
+	const R = 6_371_000;
 	const toRad = (d: number) => (d * Math.PI) / 180;
 	const dLat = toRad(b.latitude - a.latitude);
 	const dLon = toRad(b.longitude - a.longitude);
@@ -49,9 +41,7 @@ function haversine(a: Coords, b: Coords): number {
 	const sinLon = Math.sin(dLon / 2);
 	const h =
 		sinLat * sinLat +
-		Math.cos(toRad(a.latitude)) *
-			Math.cos(toRad(b.latitude)) *
-			sinLon * sinLon;
+		Math.cos(toRad(a.latitude)) * Math.cos(toRad(b.latitude)) * sinLon * sinLon;
 	return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
 
@@ -65,10 +55,6 @@ export function subscribe(fn: () => void): () => void {
 		listeners.delete(fn);
 	};
 }
-
-// ---------------------------------------------------------------------------
-// Background task
-// ---------------------------------------------------------------------------
 
 TaskManager.defineTask(TASK_NAME, ({ data, error }) => {
 	if (error) {
@@ -92,10 +78,6 @@ TaskManager.defineTask(TASK_NAME, ({ data, error }) => {
 	}
 	notify();
 });
-
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
 
 export async function requestPermissions(): Promise<boolean> {
 	const fg = await Location.requestForegroundPermissionsAsync();
@@ -121,7 +103,7 @@ export async function startTracking(): Promise<void> {
 
 	await Location.startLocationUpdatesAsync(TASK_NAME, {
 		accuracy: Location.Accuracy.BestForNavigation,
-		distanceInterval: 5, // emit update every 5 meters
+		distanceInterval: 5,
 		foregroundService: {
 			notificationTitle: "TrackHub",
 			notificationBody: "Tracking your ride…",
@@ -135,11 +117,8 @@ export async function startTracking(): Promise<void> {
 export async function pauseTracking(): Promise<void> {
 	if (!state.running || state.paused) return;
 
-	// Accumulate elapsed time for this segment
 	if (state.startedAt) {
-		state.totalElapsed += Math.floor(
-			(Date.now() - state.startedAt) / 1000,
-		);
+		state.totalElapsed += Math.floor((Date.now() - state.startedAt) / 1000);
 	}
 	state.paused = true;
 	state.startedAt = null;
@@ -171,14 +150,13 @@ export async function resumeTracking(): Promise<void> {
 export async function stopTracking(): Promise<void> {
 	if (!state.running) return;
 
-	// Finalize elapsed
 	if (state.startedAt) {
-		state.totalElapsed += Math.floor(
-			(Date.now() - state.startedAt) / 1000,
-		);
+		state.totalElapsed += Math.floor((Date.now() - state.startedAt) / 1000);
 	}
 
-	await Location.stopLocationUpdatesAsync(TASK_NAME);
+	if (!state.paused) {
+		await Location.stopLocationUpdatesAsync(TASK_NAME);
+	}
 
 	state.running = false;
 	state.paused = false;
@@ -186,7 +164,6 @@ export async function stopTracking(): Promise<void> {
 	notify();
 }
 
-/** Elapsed seconds, accounting for pause intervals. */
 export function getElapsed(): number {
 	let current = state.totalElapsed;
 	if (state.startedAt && !state.paused) {
