@@ -1,0 +1,15 @@
+services:
+  builder:
+    build: .
+    image: trackhub-builder
+    container_name: trackhub-builder
+    volumes:
+      - .:/app 
+      - gradle-cache:/root/.gradle
+      - npm-cache:/root/.npm
+    stdin_open: true
+    tty: true
+
+volumes:
+  gradle-cache:
+  npm-cache:
