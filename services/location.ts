@@ -1,0 +1,196 @@
+import * as Location from "expo-location";
+import * as TaskManager from "expo-task-manager";
+
+const TASK_NAME = "TRACKHUB_LOCATION";
+
+// ---------------------------------------------------------------------------
+// Shared store (module-level — survives backgrounding, readable by UI + task)
+// ---------------------------------------------------------------------------
+
+type Coords = {
+	latitude: number;
+	longitude: number;
+};
+
+export type RideState = {
+	running: boolean;
+	paused: boolean;
+	startedAt: number | null;
+	totalElapsed: number; // accumulated seconds from completed segments
+	distance: number; // meters
+	locations: Coords[];
+};
+
+let state: RideState = {
+	running: false,
+	paused: false,
+	startedAt: null,
+	totalElapsed: 0,
+	distance: 0,
+	locations: [],
+};
+
+const listeners = new Set<() => void>();
+
+function notify() {
+	listeners.forEach((fn) => fn());
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function haversine(a: Coords, b: Coords): number {
+	const R = 6_371_000; // Earth radius in meters
+	const toRad = (d: number) => (d * Math.PI) / 180;
+	const dLat = toRad(b.latitude - a.latitude);
+	const dLon = toRad(b.longitude - a.longitude);
+	const sinLat = Math.sin(dLat / 2);
+	const sinLon = Math.sin(dLon / 2);
+	const h =
+		sinLat * sinLat +
+		Math.cos(toRad(a.latitude)) *
+			Math.cos(toRad(b.latitude)) *
+			sinLon * sinLon;
+	return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+}
+
+export function getRideState(): Readonly<RideState> {
+	return state;
+}
+
+export function subscribe(fn: () => void): () => void {
+	listeners.add(fn);
+	return () => {
+		listeners.delete(fn);
+	};
+}
+
+// ---------------------------------------------------------------------------
+// Background task
+// ---------------------------------------------------------------------------
+
+TaskManager.defineTask(TASK_NAME, ({ data, error }) => {
+	if (error) {
+		console.warn("[TrackHub] location task error:", error.message);
+		return;
+	}
+	const locations = (data as { locations: Location.LocationObject[] })
+		.locations;
+	if (!locations?.length) return;
+
+	for (const loc of locations) {
+		const prev = state.locations[state.locations.length - 1];
+		const coord: Coords = {
+			latitude: loc.coords.latitude,
+			longitude: loc.coords.longitude,
+		};
+		if (prev) {
+			state.distance += haversine(prev, coord);
+		}
+		state.locations.push(coord);
+	}
+	notify();
+});
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
+export async function requestPermissions(): Promise<boolean> {
+	const fg = await Location.requestForegroundPermissionsAsync();
+	if (!fg.granted) return false;
+
+	const bg = await Location.requestBackgroundPermissionsAsync();
+	return bg.granted;
+}
+
+export async function startTracking(): Promise<void> {
+	const ok = await requestPermissions();
+	if (!ok) throw new Error("Location permission denied");
+
+	// Reset ride state for a brand-new ride
+	state = {
+		running: true,
+		paused: false,
+		startedAt: Date.now(),
+		totalElapsed: 0,
+		distance: 0,
+		locations: [],
+	};
+
+	await Location.startLocationUpdatesAsync(TASK_NAME, {
+		accuracy: Location.Accuracy.BestForNavigation,
+		distanceInterval: 5, // emit update every 5 meters
+		foregroundService: {
+			notificationTitle: "TrackHub",
+			notificationBody: "Tracking your ride…",
+			notificationColor: "#bf616a",
+		},
+		activityType: Location.ActivityType.Fitness,
+		showsBackgroundLocationIndicator: true,
+	});
+}
+
+export async function pauseTracking(): Promise<void> {
+	if (!state.running || state.paused) return;
+
+	// Accumulate elapsed time for this segment
+	if (state.startedAt) {
+		state.totalElapsed += Math.floor(
+			(Date.now() - state.startedAt) / 1000,
+		);
+	}
+	state.paused = true;
+	state.startedAt = null;
+
+	await Location.stopLocationUpdatesAsync(TASK_NAME);
+	notify();
+}
+
+export async function resumeTracking(): Promise<void> {
+	if (!state.running || !state.paused) return;
+
+	state.paused = false;
+	state.startedAt = Date.now();
+
+	await Location.startLocationUpdatesAsync(TASK_NAME, {
+		accuracy: Location.Accuracy.BestForNavigation,
+		distanceInterval: 5,
+		foregroundService: {
+			notificationTitle: "TrackHub",
+			notificationBody: "Tracking your ride…",
+			notificationColor: "#bf616a",
+		},
+		activityType: Location.ActivityType.Fitness,
+		showsBackgroundLocationIndicator: true,
+	});
+	notify();
+}
+
+export async function stopTracking(): Promise<void> {
+	if (!state.running) return;
+
+	// Finalize elapsed
+	if (state.startedAt) {
+		state.totalElapsed += Math.floor(
+			(Date.now() - state.startedAt) / 1000,
+		);
+	}
+
+	await Location.stopLocationUpdatesAsync(TASK_NAME);
+
+	state.running = false;
+	state.paused = false;
+	state.startedAt = null;
+	notify();
+}
+
+/** Elapsed seconds, accounting for pause intervals. */
+export function getElapsed(): number {
+	let current = state.totalElapsed;
+	if (state.startedAt && !state.paused) {
+		current += Math.floor((Date.now() - state.startedAt) / 1000);
+	}
+	return current;
+}

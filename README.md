@@ -13,21 +13,18 @@ Cycling GPS tracker mobile app. React Native + Expo + Paper UI.
 | Auth | JWT (access + refresh) |
 | Backend | [TrackHub API](https://trackhub.falderian.deno.net) |
 
-## Development (Docker)
-
-No local SDK needed — everything runs in a container.
+## Development
 
 ```bash
-docker-compose up --build
+npm install
+npx expo start
 ```
-
-Edit files on your host, Metro picks up changes. The `node_modules` volume is kept inside the container.
 
 ## Device testing
 
-1. Run the container
-2. Install [Expo Go](https://expo.dev/go) on your phone
-3. Connect to `exp://<your-lan-ip>:8081`
+1. Install [Expo Go](https://expo.dev/go) on your phone
+2. Run `npx expo start`
+3. Scan the QR code from the terminal, or connect to `exp://<your-lan-ip>:8081`
 4. The app loads over the network — no build, no cable
 
 Your phone and machine must be on the same network.
