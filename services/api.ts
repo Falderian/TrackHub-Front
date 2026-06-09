@@ -1,3 +1,5 @@
+import type { PaginatedResponse, Ride, RideStats } from "../types";
+
 const API_BASE = "https://trackhub.falderian.deno.net/";
 
 let accessToken: string | null = null;
@@ -17,13 +19,12 @@ export function getAccessToken() {
 	return accessToken;
 }
 
-async function request(path: string, options: RequestInit = {}) {
+async function request<T = unknown>(
+	path: string,
+	options: RequestInit = {},
+): Promise<T> {
 	const base = API_BASE.replace(/\/+$/, "");
 	const url = `${base}${path}`;
-	const method = options.method || "GET";
-	const body = options.body ? JSON.parse(options.body as string) : undefined;
-
-	console.log(`[API] ${method} ${url}`, body ? { body } : "");
 
 	const headers: Record<string, string> = {
 		"Content-Type": "application/json",
@@ -34,41 +35,71 @@ async function request(path: string, options: RequestInit = {}) {
 		headers.Authorization = `Bearer ${accessToken}`;
 	}
 
-	const res = await fetch(url, {
-		...options,
-		headers,
-	});
-
-	console.log(`[API] ${method} ${url} → ${res.status} ${res.statusText}`);
+	const res = await fetch(url, { ...options, headers });
 
 	const json = await res.json().catch(() => ({}));
-	console.log(
-		`[API] ${method} ${url} → response:`,
-		JSON.stringify(json).slice(0, 300),
-	);
 
 	if (!res.ok) {
-		throw new Error(
-			json.message || json.error || `Request failed: ${res.status}`,
-		);
+		const msg =
+			typeof json.error === "string"
+				? json.error
+				: json.error?.fieldErrors
+					? Object.values(json.error.fieldErrors).flat().join(", ")
+					: JSON.stringify(json.error || json.message);
+		throw new Error(msg || `Request failed: ${res.status}`);
 	}
 
-	return json;
+	return json as T;
 }
 
 export const api = {
 	register: (data: { email: string; username: string; password: string }) =>
-		request("/auth/register", { method: "POST", body: JSON.stringify(data) }),
+		request<{ accessToken: string; refreshToken: string }>("/auth/register", {
+			method: "POST",
+			body: JSON.stringify(data),
+		}),
 
 	login: (data: { email: string; password: string }) =>
-		request("/auth/login", { method: "POST", body: JSON.stringify(data) }),
+		request<{ accessToken: string; refreshToken: string }>("/auth/login", {
+			method: "POST",
+			body: JSON.stringify(data),
+		}),
 
 	refresh: () =>
-		request("/auth/refresh", {
+		request<{ accessToken: string; refreshToken: string }>("/auth/refresh", {
 			method: "POST",
 			body: JSON.stringify({ refreshToken }),
 		}),
 
-	getMe: () => request("/auth/me"),
+	getMe: () =>
+		request<{ id: number; email: string; username: string }>("/auth/me"),
 	health: () => request("/health"),
+
+	getRideStats: () => request<RideStats>("/rides/stats"),
+
+	getRides: (params?: { page?: number; pageSize?: number }) => {
+		const qs = new URLSearchParams();
+		if (params?.page) qs.set("page", String(params.page));
+		if (params?.pageSize) qs.set("pageSize", String(params.pageSize));
+		const suffix = qs.toString() ? `?${qs}` : "";
+		return request<PaginatedResponse<Ride>>(`/rides${suffix}`);
+	},
+
+	getRide: (id: number) =>
+		request<Ride & { trackPoints: unknown[] }>(`/rides/${id}`),
+
+	createRide: (data: {
+		title?: string;
+		startTime: string;
+		trackPoints?: {
+			latitude: number;
+			longitude: number;
+			elevation?: number;
+			timestamp: string;
+			speed?: number;
+		}[];
+	}) => request("/rides", { method: "POST", body: JSON.stringify(data) }),
+
+	deleteRide: (id: number) =>
+		request<void>(`/rides/${id}`, { method: "DELETE" }),
 };

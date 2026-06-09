@@ -1,109 +1,108 @@
 import { router } from "expo-router";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 import {
 	Avatar,
 	Button,
 	Icon,
+	IconButton,
 	Surface,
 	Text,
 	useTheme,
 } from "react-native-paper";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import EmptyRides from "../components/EmptyRides";
+import RideCard from "../components/RideCard";
 import { useAuth } from "../contexts/auth";
+import { api } from "../services/api";
+import type { Ride, RideStats } from "../types";
 
 export default function HomeScreen() {
 	const { user, logout } = useAuth();
 	const { colors } = useTheme();
+	const insets = useSafeAreaInsets();
+	const [rides, setRides] = useState<Ride[]>([]);
+	const [totalRides, setTotalRides] = useState(0);
+	const [stats, setStats] = useState<RideStats>({
+		totalRides: 0,
+		totalKm: 0,
+		totalMin: 0,
+	});
+	const [loading, setLoading] = useState(true);
 
-	const initials = user?.username
-		? user.username.slice(0, 2).toUpperCase()
-		: "??";
+	useEffect(() => {
+		(async () => {
+			try {
+				const res = await api.getRides({ pageSize: 5 });
+				setRides(res.data);
+				setTotalRides(res.meta.total);
+			} catch {}
+			try {
+				const s = await api.getRideStats();
+				setStats(s);
+			} catch {}
+			setLoading(false);
+		})();
+	}, []);
+
+	const totalHrs = (stats.totalMin / 60).toFixed(1);
+	const initials = user?.username?.slice(0, 2).toUpperCase() ?? "??";
 
 	return (
-		<ScrollView
-			style={[styles.container, { backgroundColor: colors.background }]}
-			contentContainerStyle={styles.content}
-		>
-			<View style={styles.welcomeRow}>
-				<Avatar.Text
-					size={56}
-					label={initials}
-					color={colors.onPrimary}
-					style={{ backgroundColor: colors.primary }}
-				/>
-				<View style={styles.welcomeText}>
-					<Text
-						variant="titleLarge"
-						style={{ color: colors.onBackground, fontWeight: "700" }}
-					>
-						Welcome back
-					</Text>
-					<Text variant="bodyMedium" style={{ color: colors.onSurfaceVariant }}>
-						{user?.email}
-					</Text>
+		<View style={[styles.container, { backgroundColor: colors.background }]}>
+			<View style={styles.header}>
+				<View style={styles.welcomeRow}>
+					<Avatar.Text
+						size={56}
+						label={initials}
+						color={colors.onPrimary}
+						style={{ backgroundColor: colors.primary }}
+					/>
+					<View style={styles.welcomeText}>
+						<Text
+							variant="titleLarge"
+							style={{ color: colors.onBackground, fontWeight: "700" }}
+						>
+							Welcome back
+						</Text>
+						<Text
+							variant="bodyMedium"
+							style={{ color: colors.onSurfaceVariant }}
+						>
+							{user?.email}
+						</Text>
+					</View>
+					<IconButton
+						icon="logout"
+						size={22}
+						iconColor={colors.error}
+						onPress={logout}
+						style={styles.logoutBtn}
+					/>
 				</View>
+
+				<View style={styles.statsRow}>
+					<StatCard icon="routes" value={totalRides} label="Rides" />
+					<StatCard
+						icon="map-marker-distance"
+						value={stats.totalKm.toFixed(1)}
+						label="km"
+					/>
+					<StatCard icon="clock-outline" value={totalHrs} label="Hours" />
+				</View>
+
+				<Button
+					mode="contained"
+					icon="bike"
+					onPress={() => router.push("/record")}
+					buttonColor={colors.primary}
+					contentStyle={styles.ctaInner}
+					style={styles.cta}
+					labelStyle={{ fontWeight: "700", fontSize: 16 }}
+				>
+					Start a Ride
+				</Button>
 			</View>
-
-			<View style={styles.statsRow}>
-				<Surface
-					style={[styles.statCard, { backgroundColor: colors.surface }]}
-					elevation={1}
-				>
-					<Icon source="routes" size={22} color={colors.primary} />
-					<Text
-						variant="titleLarge"
-						style={[styles.statValue, { color: colors.onSurface }]}
-					>
-						0
-					</Text>
-					<Text variant="labelSmall" style={{ color: colors.onSurfaceVariant }}>
-						Rides
-					</Text>
-				</Surface>
-
-				<Surface
-					style={[styles.statCard, { backgroundColor: colors.surface }]}
-					elevation={1}
-				>
-					<Icon source="map-marker-distance" size={22} color={colors.primary} />
-					<Text
-						variant="titleLarge"
-						style={[styles.statValue, { color: colors.onSurface }]}
-					>
-						0.0
-					</Text>
-					<Text variant="labelSmall" style={{ color: colors.onSurfaceVariant }}>
-						km
-					</Text>
-				</Surface>
-
-				<Surface
-					style={[styles.statCard, { backgroundColor: colors.surface }]}
-					elevation={1}
-				>
-					<Icon source="clock-outline" size={22} color={colors.primary} />
-					<Text
-						variant="titleLarge"
-						style={[styles.statValue, { color: colors.onSurface }]}
-					>
-						0h
-					</Text>
-					<Text variant="labelSmall" style={{ color: colors.onSurfaceVariant }}>
-						Time
-					</Text>
-				</Surface>
-			</View>
-
-			<Button
-				mode="contained"
-				icon="bike"
-				onPress={() => router.push("/record")}
-				buttonColor={colors.primary}
-				contentStyle={styles.ctaInner}
-				style={styles.cta}
-				labelStyle={{ fontWeight: "700", fontSize: 16 }}
-			>
-				Start a Ride
-			</Button>
 
 			<View style={styles.sectionHeader}>
 				<Text
@@ -112,53 +111,70 @@ export default function HomeScreen() {
 				>
 					Recent Rides
 				</Text>
+				{totalRides > 5 && (
+					<Button
+						mode="text"
+						icon="chevron-right"
+						contentStyle={{ flexDirection: "row-reverse" }}
+						onPress={() => router.push("/dashboard")}
+						textColor={colors.primary}
+					>
+						See all
+					</Button>
+				)}
 			</View>
 
-			<Surface
-				style={[styles.emptyCard, { backgroundColor: colors.surface }]}
-				elevation={1}
-			>
-				<View
-					style={[
-						styles.emptyIconWrap,
-						{ backgroundColor: colors.surfaceVariant },
-					]}
-				>
-					<Icon source="bike" size={40} color={colors.onSurfaceVariant} />
+			{loading ? (
+				<View style={styles.loadingWrap}>
+					<ActivityIndicator size="large" color={colors.primary} />
 				</View>
-				<Text
-					variant="titleMedium"
-					style={{ color: colors.onSurface, marginTop: 12 }}
-				>
-					No rides yet
-				</Text>
-				<Text
-					variant="bodySmall"
-					style={{
-						color: colors.onSurfaceVariant,
-						textAlign: "center",
-						marginTop: 4,
-					}}
-				>
-					Hit Start a Ride to record your first one
-				</Text>
-			</Surface>
+			) : rides.length === 0 ? (
+				<View style={[styles.ridesScroll, { paddingBottom: insets.bottom }]}>
+					<EmptyRides />
+				</View>
+			) : (
+				<View style={[styles.ridesScroll, { paddingBottom: insets.bottom }]}>
+					{rides.map((ride) => (
+						<RideCard key={ride.id} ride={ride} />
+					))}
+				</View>
+			)}
+		</View>
+	);
+}
 
-			<Button
-				mode="text"
-				onPress={logout}
-				textColor={colors.error}
-				style={styles.logout}
+function StatCard({
+	icon,
+	value,
+	label,
+}: {
+	icon: string;
+	value: string | number;
+	label: string;
+}) {
+	const { colors } = useTheme();
+	return (
+		<Surface
+			style={[styles.statCard, { backgroundColor: colors.surface }]}
+			elevation={1}
+		>
+			<Icon source={icon} size={22} color={colors.primary} />
+			<Text
+				variant="titleLarge"
+				style={[styles.statValue, { color: colors.onSurface }]}
 			>
-				Log out
-			</Button>
-		</ScrollView>
+				{value}
+			</Text>
+			<Text variant="labelSmall" style={{ color: colors.onSurfaceVariant }}>
+				{label}
+			</Text>
+		</Surface>
 	);
 }
 
 const styles = StyleSheet.create({
 	container: { flex: 1 },
-	content: { padding: 24, paddingTop: 64, paddingBottom: 40 },
+	header: { paddingHorizontal: 24, paddingTop: 64 },
 	welcomeRow: {
 		flexDirection: "row",
 		alignItems: "center",
@@ -177,14 +193,14 @@ const styles = StyleSheet.create({
 	statValue: { fontWeight: "800" },
 	cta: { borderRadius: 14, marginBottom: 32 },
 	ctaInner: { paddingVertical: 8 },
-	sectionHeader: { marginBottom: 12 },
-	emptyCard: { borderRadius: 14, padding: 32, alignItems: "center" },
-	emptyIconWrap: {
-		width: 72,
-		height: 72,
-		borderRadius: 36,
+	sectionHeader: {
+		flexDirection: "row",
 		alignItems: "center",
-		justifyContent: "center",
+		justifyContent: "space-between",
+		paddingHorizontal: 24,
+		marginBottom: 12,
 	},
-	logout: { marginTop: 32, alignSelf: "center" },
+	ridesScroll: { flex: 1, paddingHorizontal: 24 },
+	loadingWrap: { flex: 1, justifyContent: "center", alignItems: "center" },
+	logoutBtn: { margin: 0 },
 });

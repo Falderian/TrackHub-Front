@@ -1,0 +1,15 @@
+{
+	"files": {
+		"includes": [
+			"app/**",
+			"components/**",
+			"services/**",
+			"contexts/**",
+			"hooks/**",
+			"constants/**",
+			"*.ts",
+			"*.tsx",
+			"*.json"
+		]
+	}
+}

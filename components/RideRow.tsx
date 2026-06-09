@@ -1,0 +1,71 @@
+import { StyleSheet, View } from "react-native";
+import { Icon, Surface, Text, useTheme } from "react-native-paper";
+import type { Ride } from "../types";
+
+export default function RideRow({ ride }: { ride: Ride }) {
+	const { colors } = useTheme();
+	const dur =
+		ride.startTime && ride.endTime
+			? Math.round(
+					(new Date(ride.endTime).getTime() -
+						new Date(ride.startTime).getTime()) /
+						60000,
+				)
+			: null;
+
+	return (
+		<Surface
+			style={[styles.card, { backgroundColor: colors.surface }]}
+			elevation={1}
+		>
+			<View style={[styles.icon, { backgroundColor: colors.surfaceVariant }]}>
+				<Icon source="bike" size={20} color={colors.primary} />
+			</View>
+			<View style={styles.body}>
+				<Text
+					variant="labelLarge"
+					style={{ color: colors.onSurface, fontWeight: "600" }}
+					numberOfLines={1}
+				>
+					{ride.title ?? "Untitled Ride"}
+				</Text>
+				<Text variant="labelSmall" style={{ color: colors.onSurfaceVariant }}>
+					{new Date(ride.startTime).toLocaleDateString()}
+					{dur != null ? ` · ${dur}min` : ""}
+					{ride.distance != null ? ` · ${ride.distance.toFixed(1)} km` : ""}
+				</Text>
+			</View>
+			<View style={styles.speed}>
+				<Text
+					variant="labelMedium"
+					style={{ color: colors.onSurface, fontWeight: "600" }}
+				>
+					{ride.avgSpeed != null ? `${ride.avgSpeed.toFixed(1)}` : "—"}
+				</Text>
+				<Text variant="labelSmall" style={{ color: colors.onSurfaceVariant }}>
+					km/h
+				</Text>
+			</View>
+		</Surface>
+	);
+}
+
+const styles = StyleSheet.create({
+	card: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 12,
+		padding: 14,
+		borderRadius: 12,
+		marginBottom: 8,
+	},
+	icon: {
+		width: 36,
+		height: 36,
+		borderRadius: 18,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	body: { flex: 1 },
+	speed: { alignItems: "flex-end" },
+});

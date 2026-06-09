@@ -3,277 +3,64 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 # ============================================================
-#  TrackHub — Standalone Release APK Builder
+#  TrackHub — Release APK Builder
 # ============================================================
-#  Builds a properly signed, production-ready APK suitable
-#  for distribution (Google Play, sideloading, etc.).
-#
-#  On first run, generates a release keystore and patches
-#  the android project for release signing. Subsequent runs
-#  reuse the same credentials.
+#  Builds a signed, production-ready APK. Requires the
+#  release signing setup to have been run first:
+#    ./setup-release-signing.sh
 #
 #  Usage:
 #    ./build-release-apk.sh
-#
-#  Environment variables (optional):
-#    RELEASE_KEY_PASSWORD  — keystore / key password
-#    RELEASE_KEY_ALIAS     — key alias (default: trackhub-release)
 # ============================================================
 
-# --- Paths ---
 KEYSTORE_FILE="android/app/release.keystore"
 PASSWORD_FILE=".release-keystore.password"
-GRADLE_PROPS="android/gradle.properties"
-APP_BUILD_GRADLE="android/app/build.gradle"
 APK_OUTPUT_DIR="dist"
 
-KEYSTORE_ALIAS="${RELEASE_KEY_ALIAS:-trackhub-release}"
-
-# --- Colors ---
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-CYAN='\033[0;36m'
-NC='\033[0m'
-
-info()  { echo -e "${CYAN}[INFO]${NC}  $*"; }
-ok()    { echo -e "${GREEN}[OK]${NC}    $*"; }
-warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
-error() { echo -e "${RED}[ERROR]${NC} $*"; }
-
 echo ""
-echo "================================================"
-echo "  TrackHub — Standalone Release APK Builder"
-echo "================================================"
+echo "=== TrackHub — Release APK Builder ==="
 echo ""
 
-# ============================================================
-#  1. Verify Docker
-# ============================================================
-info "Checking Docker daemon..."
-if ! docker info &>/dev/null; then
-  error "Docker is not running. Start Docker and try again."
+# --- Verify signing is configured ---
+if [ ! -f "$KEYSTORE_FILE" ]; then
+  echo "ERROR: Release keystore not found at: $KEYSTORE_FILE"
+  echo "       Run ./setup-release-signing.sh first."
   exit 1
 fi
-ok "Docker is running"
 
-# ============================================================
-#  2. Start (or build) the container
-# ============================================================
-info "Starting build container (first run builds the image)..."
-docker compose up -d --build 2>&1 | tail -3
-ok "Build container ready"
-
-# ============================================================
-#  2b. Fix ownership of docker-created files
-# ============================================================
-if [ -d android ] && [ "$(stat -c '%u' android 2>/dev/null)" != "$(id -u)" ]; then
-  info "Fixing file ownership (Docker creates files as root)..."
-  sudo chown -R "$(id -u):$(id -g)" android
-  ok "Ownership fixed"
+if [ ! -f "$PASSWORD_FILE" ]; then
+  echo "ERROR: Password file not found at: $PASSWORD_FILE"
+  echo "       Run ./setup-release-signing.sh first."
+  exit 1
 fi
 
-# ============================================================
-#  3. Generate release keystore (first run only)
-# ============================================================
-info "Checking release keystore..."
-
-if [ -f "$KEYSTORE_FILE" ]; then
-  ok "Using existing keystore: $KEYSTORE_FILE"
-  if [ -z "${RELEASE_KEY_PASSWORD:-}" ] && [ -f "$PASSWORD_FILE" ]; then
-    RELEASE_KEY_PASSWORD=$(cat "$PASSWORD_FILE")
-  elif [ -z "${RELEASE_KEY_PASSWORD:-}" ]; then
-    error "Keystore exists but no password available."
-    error "  Either set RELEASE_KEY_PASSWORD in the environment,"
-    error "  or ensure $PASSWORD_FILE exists."
-    exit 1
-  fi
-else
-  warn "No release keystore found — generating one..."
-
-  if [ -z "${RELEASE_KEY_PASSWORD:-}" ]; then
-    RELEASE_KEY_PASSWORD=$(openssl rand -base64 32)
-    info "Generated random keystore password"
-  fi
-
-  docker compose exec -T builder bash -c "
-    keytool -genkeypair -v \
-      -keystore /app/$KEYSTORE_FILE \
-      -alias '$KEYSTORE_ALIAS' \
-      -keyalg RSA \
-      -keysize 2048 \
-      -validity 10000 \
-      -storepass '$RELEASE_KEY_PASSWORD' \
-      -keypass '$RELEASE_KEY_PASSWORD' \
-      -dname 'CN=TrackHub, OU=Dev, O=TrackHub, L=Unknown, ST=Unknown, C=US' \
-      2>&1
-  "
-
-  echo "$RELEASE_KEY_PASSWORD" > "$PASSWORD_FILE"
-  chmod 600 "$PASSWORD_FILE"
-  sudo chown "$(id -u):$(id -g)" "$KEYSTORE_FILE" 2>/dev/null || true
-  ok "Keystore created:  $KEYSTORE_FILE"
-  ok "Password saved to: $PASSWORD_FILE  (chmod 600)"
-  echo ""
-  warn "IMPORTANT — Back up your keystore and password!"
-  warn "  $KEYSTORE_FILE"
-  warn "  $PASSWORD_FILE"
-  warn "  Without these, you CANNOT publish updates to Google Play."
+if ! grep -q "RELEASE_STORE_FILE" android/gradle.properties 2>/dev/null; then
+  echo "ERROR: Signing properties not found in gradle.properties"
+  echo "       Run ./setup-release-signing.sh first."
+  exit 1
 fi
 
-# ============================================================
-#  4. Write signing properties to gradle.properties
-# ============================================================
-info "Writing signing properties to gradle.properties..."
+echo "Signing configuration verified."
 
-if grep -q "RELEASE_STORE_FILE" "$GRADLE_PROPS" 2>/dev/null; then
-  ok "Signing properties already present in gradle.properties"
-else
-  cat >> "$GRADLE_PROPS" <<EOF
-
-# -------------------------------------------------------
-# Release signing credentials
-# Auto-generated by build-release-apk.sh
-# -------------------------------------------------------
-RELEASE_STORE_FILE=release.keystore
-RELEASE_KEY_ALIAS=$KEYSTORE_ALIAS
-RELEASE_STORE_PASSWORD=$RELEASE_KEY_PASSWORD
-RELEASE_KEY_PASSWORD=$RELEASE_KEY_PASSWORD
-EOF
-  ok "Signing properties written to gradle.properties"
-fi
-
-# ============================================================
-#  5. Patch build.gradle for release signing (first run only)
-# ============================================================
-info "Checking build.gradle release signing config..."
-
-python3 << 'PYEOF'
-import sys
-
-path = "android/app/build.gradle"
-with open(path, "r") as f:
-    content = f.read()
-
-# Bail early if already patched
-if "signingConfigs {" in content and 'signingConfigs.release' in content:
-    print("  Already configured — nothing to do")
-    sys.exit(0)
-
-# --- Step A: add a 'release' entry inside signingConfigs ---
-old_block = """    signingConfigs {
-        debug {
-            storeFile file('debug.keystore')
-            storePassword 'android'
-            keyAlias 'androiddebugkey'
-            keyPassword 'android'
-        }
-    }"""
-
-new_block = """    signingConfigs {
-        debug {
-            storeFile file('debug.keystore')
-            storePassword 'android'
-            keyAlias 'androiddebugkey'
-            keyPassword 'android'
-        }
-        release {
-            if (project.hasProperty('RELEASE_STORE_FILE')) {
-                storeFile file(project.property('RELEASE_STORE_FILE'))
-                storePassword project.property('RELEASE_STORE_PASSWORD')
-                keyAlias project.property('RELEASE_KEY_ALIAS')
-                keyPassword project.property('RELEASE_KEY_PASSWORD')
-            }
-        }
-    }"""
-
-if old_block in content:
-    content = content.replace(old_block, new_block, 1)
-    print("  Added release signing config to signingConfigs block")
-else:
-    print("  ERROR: Could not find expected signingConfigs block in build.gradle")
-    print("  The file may have been modified manually. Please add a 'release'")
-    print("  signing config inside signingConfigs { }, then re-run this script.")
-    sys.exit(1)
-
-# --- Step B: point the release build type at the new config ---
-# Only change inside the release { } block (not the debug one).
-old_release = """        release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug"""
-
-new_release = """        release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.release"""
-
-if old_release in content:
-    content = content.replace(old_release, new_release, 1)
-    print("  Updated release build type -> signingConfigs.release")
-else:
-    print("  WARNING: Could not find release signingConfig line to update")
-    print("  The APK may still be signed with the debug keystore.")
-
-with open(path, "w") as f:
-    f.write(content)
-
-print("  build.gradle successfully configured for release signing")
-PYEOF
-
-ok "build.gradle ready"
-
-# ============================================================
-#  6. Build the release APK inside the container
-# ============================================================
-info "Building release APK inside the container..."
-info "This may take 5–15 minutes on the first run (downloading dependencies)..."
+# --- Build ---
 echo ""
+./build-apk.sh release
 
-docker compose exec -T builder bash -c "
-  set -euo pipefail
-  cd /app/android
-
-  # Ensure the native project is generated
-  if [ ! -f app/build.gradle ]; then
-    echo '>>> Running expo prebuild (first time)...'
-    npx expo prebuild --platform android
-  fi
-
-  echo '>>> ./gradlew assembleRelease'
-  ./gradlew assembleRelease 2>&1
-"
-
-echo ""
-
-# ============================================================
-#  7. Collect the APK
-# ============================================================
+# --- Collect ---
 APK_SRC="android/app/build/outputs/apk/release/app-release.apk"
 
 if [ -f "$APK_SRC" ]; then
   mkdir -p "$APK_OUTPUT_DIR"
-
   TIMESTAMP=$(date +%Y%m%d-%H%M%S)
   APK_DST="${APK_OUTPUT_DIR}/TrackHub-${TIMESTAMP}-release.apk"
   cp "$APK_SRC" "$APK_DST"
 
-  echo "================================================"
   echo ""
-  ok "BUILD SUCCESSFUL"
-  echo ""
-  echo "  APK:       $APK_DST"
-  echo "  Size:      $(du -h "$APK_DST" | cut -f1)"
-  echo "  Keystore:  $KEYSTORE_FILE"
-  echo "  Password:  $PASSWORD_FILE"
-  echo ""
-  echo "  Keep your keystore and password file safe!"
-  echo "  They are required to publish updates on Google Play."
-  echo ""
-  echo "================================================"
+  echo "=== Build successful ==="
+  echo "  APK:  $APK_DST"
+  echo "  Size: $(du -h "$APK_DST" | cut -f1)"
 else
-  error "BUILD FAILED"
-  error "APK not found at: $APK_SRC"
-  error "Check the Gradle output above for errors."
+  echo ""
+  echo "ERROR: Build failed — APK not found at: $APK_SRC"
   exit 1
 fi
