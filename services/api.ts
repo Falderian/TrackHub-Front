@@ -31,7 +31,7 @@ async function request(path: string, options: RequestInit = {}) {
 	};
 
 	if (accessToken) {
-		headers["Authorization"] = `Bearer ${accessToken}`;
+		headers.Authorization = `Bearer ${accessToken}`;
 	}
 
 	const res = await fetch(url, {

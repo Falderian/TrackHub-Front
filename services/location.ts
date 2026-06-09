@@ -29,7 +29,7 @@ let state: RideState = {
 const listeners = new Set<() => void>();
 
 function notify() {
-	listeners.forEach((fn) => fn());
+	for (const fn of listeners) fn();
 }
 
 function haversine(a: Coords, b: Coords): number {

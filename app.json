@@ -1,63 +1,60 @@
 {
-  "expo": {
-    "name": "TrackHub",
-    "slug": "trackhub",
-    "scheme": "trackhub",
-    "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "userInterfaceStyle": "automatic",
-    "splash": {
-      "image": "./assets/images/icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#2e3440"
-    },
-    "ios": {
-      "supportsTablet": true,
-      "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "TrackHub needs your location to track your rides.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "TrackHub needs background location to track your ride while the device is locked.",
-        "UIBackgroundModes": [
-          "location",
-          "fetch"
-        ]
-      }
-    },
-    "android": {
-      "adaptiveIcon": {
-        "backgroundColor": "#ffffff"
-      },
-      "permissions": [
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION",
-        "ACCESS_BACKGROUND_LOCATION",
-        "FOREGROUND_SERVICE",
-        "POST_NOTIFICATIONS",
-        "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.ACCESS_BACKGROUND_LOCATION",
-        "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_LOCATION"
-      ],
-      "package": "com.protasckina.trackhub"
-    },
-    "plugins": [
-      "expo-router",
-      [
-        "expo-location",
-        {
-          "locationAlwaysAndWhenInUsePermission": "TrackHub needs background location to track your ride while the device is locked.",
-          "locationWhenInUsePermission": "TrackHub needs your location to track your rides.",
-          "isAndroidBackgroundLocationEnabled": true,
-          "isAndroidForegroundServiceEnabled": true
-        }
-      ]
-    ],
-    "extra": {
-      "router": {},
-      "eas": {
-        "projectId": "0a269244-4c73-4fe7-bffc-4066e7d73425"
-      }
-    }
-  }
+	"expo": {
+		"name": "TrackHub",
+		"slug": "trackhub",
+		"scheme": "trackhub",
+		"version": "1.0.0",
+		"orientation": "portrait",
+		"icon": "./assets/images/icon.png",
+		"userInterfaceStyle": "automatic",
+		"splash": {
+			"image": "./assets/images/icon.png",
+			"resizeMode": "contain",
+			"backgroundColor": "#2e3440"
+		},
+		"ios": {
+			"supportsTablet": true,
+			"infoPlist": {
+				"NSLocationWhenInUseUsageDescription": "TrackHub needs your location to track your rides.",
+				"NSLocationAlwaysAndWhenInUseUsageDescription": "TrackHub needs background location to track your ride while the device is locked.",
+				"UIBackgroundModes": ["location", "fetch"]
+			}
+		},
+		"android": {
+			"adaptiveIcon": {
+				"backgroundColor": "#ffffff"
+			},
+			"permissions": [
+				"ACCESS_FINE_LOCATION",
+				"ACCESS_COARSE_LOCATION",
+				"ACCESS_BACKGROUND_LOCATION",
+				"FOREGROUND_SERVICE",
+				"POST_NOTIFICATIONS",
+				"android.permission.ACCESS_COARSE_LOCATION",
+				"android.permission.ACCESS_FINE_LOCATION",
+				"android.permission.ACCESS_BACKGROUND_LOCATION",
+				"android.permission.FOREGROUND_SERVICE",
+				"android.permission.FOREGROUND_SERVICE_LOCATION"
+			],
+			"package": "com.protasckina.trackhub"
+		},
+		"plugins": [
+			"expo-router",
+			[
+				"expo-location",
+				{
+					"locationAlwaysAndWhenInUsePermission": "TrackHub needs background location to track your ride while the device is locked.",
+					"locationWhenInUsePermission": "TrackHub needs your location to track your rides.",
+					"isAndroidBackgroundLocationEnabled": true,
+					"isAndroidForegroundServiceEnabled": true
+				}
+			]
+		],
+		"extra": {
+			"router": {},
+			"eas": {
+				"projectId": "0a269244-4c73-4fe7-bffc-4066e7d73425"
+			}
+		}
+	}
 }

@@ -3,11 +3,11 @@ import {
 	getElapsed,
 	getRideState,
 	pauseTracking,
+	type RideState,
 	resumeTracking,
 	startTracking,
 	stopTracking,
 	subscribe,
-	type RideState,
 } from "../services/location";
 
 export interface RideData {
@@ -91,18 +91,34 @@ export function useRide(): RideData {
 	const isActive = rideState.running && !rideState.paused;
 	const isPaused = rideState.running && rideState.paused;
 
-	return {
-		state: rideState,
-		elapsed,
-		distanceKm,
-		elapsedStr,
-		speedKmh,
-		isIdle,
-		isActive,
-		isPaused,
-		start,
-		pause,
-		resume,
-		stop,
-	};
+	return useMemo(
+		() => ({
+			state: rideState,
+			elapsed,
+			distanceKm,
+			elapsedStr,
+			speedKmh,
+			isIdle,
+			isActive,
+			isPaused,
+			start,
+			pause,
+			resume,
+			stop,
+		}),
+		[
+			rideState,
+			elapsed,
+			distanceKm,
+			elapsedStr,
+			speedKmh,
+			isIdle,
+			isActive,
+			isPaused,
+			start,
+			pause,
+			resume,
+			stop,
+		],
+	);
 }

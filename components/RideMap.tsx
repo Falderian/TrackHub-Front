@@ -4,9 +4,10 @@ import React, {
 	useRef,
 	useState,
 } from "react";
-import { StyleSheet } from "react-native";
-import MapView, { Polyline, type MapType } from "react-native-maps";
+import { Platform, StyleSheet } from "react-native";
+import MapView, { Polyline, PROVIDER_GOOGLE, UrlTile } from "react-native-maps";
 import { useTheme } from "react-native-paper";
+import { TILE_STYLES } from "../constants/maps";
 
 export interface RideMapHandle {
 	recenter: () => void;
@@ -19,22 +20,16 @@ interface Props {
 	locations: readonly { latitude: number; longitude: number }[];
 }
 
-const MAP_TYPES: MapType[] = ["standard", "satellite", "hybrid", "terrain"];
-
 const RideMap = React.forwardRef<RideMapHandle, Props>(function RideMap(
 	{ initialLat, initialLon, locations },
 	ref,
 ) {
 	const { colors } = useTheme();
 	const mapRef = useRef<MapView>(null);
-	const [mapTypeIdx, setMapTypeIdx] = useState(0);
+	const [styleIdx, setStyleIdx] = useState(0);
 	const userPosRef = useRef<{ latitude: number; longitude: number } | null>(
 		null,
 	);
-
-	const cycleMapType = useCallback(() => {
-		setMapTypeIdx((i) => (i + 1) % MAP_TYPES.length);
-	}, []);
 
 	const recenter = useCallback(() => {
 		const target =
@@ -52,6 +47,10 @@ const RideMap = React.forwardRef<RideMapHandle, Props>(function RideMap(
 			500,
 		);
 	}, [locations]);
+
+	const cycleMapType = useCallback(() => {
+		setStyleIdx((i) => (i + 1) % TILE_STYLES.length);
+	}, []);
 
 	useImperativeHandle(ref, () => ({ recenter, cycleMapType }), [
 		recenter,
@@ -73,6 +72,7 @@ const RideMap = React.forwardRef<RideMapHandle, Props>(function RideMap(
 		<MapView
 			ref={mapRef}
 			style={styles.map}
+			provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
 			initialRegion={{
 				latitude: initialLat,
 				longitude: initialLon,
@@ -80,13 +80,20 @@ const RideMap = React.forwardRef<RideMapHandle, Props>(function RideMap(
 				longitudeDelta: 0.02,
 			}}
 			showsUserLocation
+			showsMyLocationButton={false}
 			followsUserLocation={false}
-			mapType={MAP_TYPES[mapTypeIdx]}
+			mapType="standard"
 			onUserLocationChange={handleUserLocationChange}
 			scrollEnabled
 			zoomEnabled
 			rotateEnabled
 		>
+			<UrlTile
+				key={styleIdx}
+				urlTemplate={TILE_STYLES[styleIdx].url}
+				maximumZ={20}
+				tileSize={256}
+			/>
 			{locations.length > 1 && (
 				<Polyline
 					coordinates={[...locations]}
