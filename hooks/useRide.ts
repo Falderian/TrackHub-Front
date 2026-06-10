@@ -9,6 +9,7 @@ import {
 	stopTracking,
 	subscribe,
 } from "../services/location";
+import { api } from "../services/api";
 
 export interface RideData {
 	state: RideState;
@@ -22,7 +23,7 @@ export interface RideData {
 	start: () => Promise<void>;
 	pause: () => Promise<void>;
 	resume: () => Promise<void>;
-	stop: () => Promise<void>;
+	stop: () => Promise<number | null>;
 }
 
 function fmtTime(s: number) {
@@ -69,9 +70,22 @@ export function useRide(): RideData {
 		refresh();
 	}, [refresh]);
 
-	const stop = useCallback(async () => {
-		await stopTracking();
+	const stop = useCallback(async (): Promise<number | null> => {
+		const summary = await stopTracking();
 		refresh();
+
+		if (summary?.trackPoints.length) {
+			try {
+				const ride = await api.createRide({
+					startTime: summary.startTime,
+					trackPoints: summary.trackPoints,
+				});
+				return (ride as { id: number }).id;
+			} catch (err) {
+				console.error("Failed to save ride:", err);
+			}
+		}
+		return null;
 	}, [refresh]);
 
 	const distanceKm = useMemo(

@@ -1,5 +1,5 @@
-import { router } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { router, useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
 import { ActivityIndicator, FlatList, StyleSheet, View } from "react-native";
 import { Icon, IconButton, Text, useTheme } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -30,9 +30,11 @@ export default function DashboardScreen() {
 		if (statsRes) setStats(statsRes);
 	}, []);
 
-	useEffect(() => {
-		fetchData().finally(() => setLoading(false));
-	}, [fetchData]);
+	useFocusEffect(
+		useCallback(() => {
+			fetchData().finally(() => setLoading(false));
+		}, [fetchData]),
+	);
 
 	const onRefresh = useCallback(async () => {
 		setRefreshing(true);

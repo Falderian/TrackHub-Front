@@ -26,6 +26,15 @@ export default function RidePanel({ ride, mapRef }: Props) {
 		mapRef.current?.recenter();
 	}, [ride.resume, mapRef]);
 
+	const handleStop = useCallback(async () => {
+		const rideId = await ride.stop();
+		if (rideId) {
+			router.replace(`/ride/${rideId}`);
+		} else {
+			router.back();
+		}
+	}, [ride.stop]);
+
 	return (
 		<Surface
 			style={[styles.panel, { backgroundColor: colors.surface }]}
@@ -80,7 +89,7 @@ export default function RidePanel({ ride, mapRef }: Props) {
 				onStart={handleStart}
 				onPause={ride.pause}
 				onResume={handleResume}
-				onStop={ride.stop}
+				onStop={handleStop}
 			/>
 		</Surface>
 	);

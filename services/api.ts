@@ -89,7 +89,6 @@ export const api = {
 		request<Ride & { trackPoints: unknown[] }>(`/rides/${id}`),
 
 	createRide: (data: {
-		title?: string;
 		startTime: string;
 		trackPoints?: {
 			latitude: number;

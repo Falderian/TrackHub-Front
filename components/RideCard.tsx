@@ -1,4 +1,5 @@
-import { StyleSheet, View } from "react-native";
+import { router } from "expo-router";
+import { Pressable, StyleSheet, View } from "react-native";
 import { Icon, Surface, Text, useTheme } from "react-native-paper";
 import type { Ride } from "../types";
 
@@ -6,28 +7,28 @@ export default function RideCard({ ride }: { ride: Ride }) {
 	const { colors } = useTheme();
 
 	return (
-		<Surface
-			style={[styles.card, { backgroundColor: colors.surface }]}
-			elevation={1}
-		>
-			<Icon source="bike" size={24} color={colors.primary} />
-			<View style={styles.body}>
-				<Text
-					variant="labelLarge"
-					style={{ color: colors.onSurface, fontWeight: "600" }}
-					numberOfLines={1}
-				>
-					{ride.title ?? "Untitled Ride"}
-				</Text>
-				<Text variant="labelSmall" style={{ color: colors.onSurfaceVariant }}>
-					{new Date(ride.startTime).toLocaleDateString()}
-					{" · "}
-					{ride.distance != null ? `${ride.distance.toFixed(1)} km` : "—"}
-					{ride.avgSpeed != null ? ` · ${ride.avgSpeed.toFixed(1)} km/h` : ""}
-				</Text>
-			</View>
-			<Icon source="chevron-right" size={18} color={colors.onSurfaceVariant} />
-		</Surface>
+		<Pressable onPress={() => router.push(`/ride/${ride.id}`)}>
+			<Surface
+				style={[styles.card, { backgroundColor: colors.surface }]}
+				elevation={1}
+			>
+				<Icon source="bike" size={24} color={colors.primary} />
+				<View style={styles.body}>
+					<Text
+						variant="labelLarge"
+						style={{ color: colors.onSurface, fontWeight: "600" }}
+						numberOfLines={1}
+					>
+						{ride.title}
+					</Text>
+					<Text variant="labelSmall" style={{ color: colors.onSurfaceVariant }}>
+						{ride.distance != null ? `${ride.distance.toFixed(1)} km` : "—"}
+						{ride.avgSpeed != null ? ` · ${ride.avgSpeed.toFixed(1)} km/h` : ""}
+					</Text>
+				</View>
+				<Icon source="chevron-right" size={18} color={colors.onSurfaceVariant} />
+			</Surface>
+		</Pressable>
 	);
 }
 

@@ -1,4 +1,5 @@
-import { StyleSheet, View } from "react-native";
+import { router } from "expo-router";
+import { Pressable, StyleSheet, View } from "react-native";
 import { Icon, Surface, Text, useTheme } from "react-native-paper";
 import type { Ride } from "../types";
 
@@ -14,39 +15,42 @@ export default function RideRow({ ride }: { ride: Ride }) {
 			: null;
 
 	return (
-		<Surface
-			style={[styles.card, { backgroundColor: colors.surface }]}
-			elevation={1}
-		>
-			<View style={[styles.icon, { backgroundColor: colors.surfaceVariant }]}>
-				<Icon source="bike" size={20} color={colors.primary} />
-			</View>
-			<View style={styles.body}>
-				<Text
-					variant="labelLarge"
-					style={{ color: colors.onSurface, fontWeight: "600" }}
-					numberOfLines={1}
-				>
-					{ride.title ?? "Untitled Ride"}
-				</Text>
-				<Text variant="labelSmall" style={{ color: colors.onSurfaceVariant }}>
-					{new Date(ride.startTime).toLocaleDateString()}
-					{dur != null ? ` · ${dur}min` : ""}
-					{ride.distance != null ? ` · ${ride.distance.toFixed(1)} km` : ""}
-				</Text>
-			</View>
-			<View style={styles.speed}>
-				<Text
-					variant="labelMedium"
-					style={{ color: colors.onSurface, fontWeight: "600" }}
-				>
-					{ride.avgSpeed != null ? `${ride.avgSpeed.toFixed(1)}` : "—"}
-				</Text>
-				<Text variant="labelSmall" style={{ color: colors.onSurfaceVariant }}>
-					km/h
-				</Text>
-			</View>
-		</Surface>
+		<Pressable onPress={() => router.push(`/ride/${ride.id}`)}>
+			<Surface
+				style={[styles.card, { backgroundColor: colors.surface }]}
+				elevation={1}
+			>
+				<View style={[styles.icon, { backgroundColor: colors.surfaceVariant }]}>
+					<Icon source="bike" size={20} color={colors.primary} />
+				</View>
+				<View style={styles.body}>
+					<Text
+						variant="labelLarge"
+						style={{ color: colors.onSurface, fontWeight: "600" }}
+						numberOfLines={1}
+					>
+						{ride.title}
+					</Text>
+					<Text variant="labelSmall" style={{ color: colors.onSurfaceVariant }}>
+						{dur != null ? `${dur}min` : ""}
+						{ride.distance != null
+							? `${dur != null ? " · " : ""}${ride.distance.toFixed(1)} km`
+							: ""}
+					</Text>
+				</View>
+				<View style={styles.speed}>
+					<Text
+						variant="labelMedium"
+						style={{ color: colors.onSurface, fontWeight: "600" }}
+					>
+						{ride.avgSpeed != null ? `${ride.avgSpeed.toFixed(1)}` : "—"}
+					</Text>
+					<Text variant="labelSmall" style={{ color: colors.onSurfaceVariant }}>
+						km/h
+					</Text>
+				</View>
+			</Surface>
+		</Pressable>
 	);
 }
 

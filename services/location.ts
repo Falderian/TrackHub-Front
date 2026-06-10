@@ -6,21 +6,35 @@ const TASK_NAME = "TRACKHUB_LOCATION";
 type Coords = {
 	latitude: number;
 	longitude: number;
+	timestamp: number;
 };
 
 export type RideState = {
 	running: boolean;
 	paused: boolean;
 	startedAt: number | null;
+	rideStartTime: number | null;
 	totalElapsed: number;
 	distance: number;
 	locations: Coords[];
 };
 
+export interface RideSummary {
+	startTime: string;
+	totalElapsed: number;
+	distance: number;
+	trackPoints: {
+		latitude: number;
+		longitude: number;
+		timestamp: string;
+	}[];
+}
+
 let state: RideState = {
 	running: false,
 	paused: false,
 	startedAt: null,
+	rideStartTime: null,
 	totalElapsed: 0,
 	distance: 0,
 	locations: [],
@@ -70,6 +84,7 @@ TaskManager.defineTask(TASK_NAME, ({ data, error }) => {
 		const coord: Coords = {
 			latitude: loc.coords.latitude,
 			longitude: loc.coords.longitude,
+			timestamp: loc.timestamp,
 		};
 		if (prev) {
 			state.distance += haversine(prev, coord);
@@ -92,10 +107,12 @@ export async function startTracking(): Promise<void> {
 	if (!ok) throw new Error("Location permission denied");
 
 	// Reset ride state for a brand-new ride
+	const now = Date.now();
 	state = {
 		running: true,
 		paused: false,
-		startedAt: Date.now(),
+		startedAt: now,
+		rideStartTime: now,
 		totalElapsed: 0,
 		distance: 0,
 		locations: [],
@@ -147,8 +164,8 @@ export async function resumeTracking(): Promise<void> {
 	notify();
 }
 
-export async function stopTracking(): Promise<void> {
-	if (!state.running) return;
+export async function stopTracking(): Promise<RideSummary | null> {
+	if (!state.running) return null;
 
 	if (state.startedAt) {
 		state.totalElapsed += Math.floor((Date.now() - state.startedAt) / 1000);
@@ -158,10 +175,27 @@ export async function stopTracking(): Promise<void> {
 		await Location.stopLocationUpdatesAsync(TASK_NAME);
 	}
 
+	const summary: RideSummary = {
+		startTime: new Date(state.rideStartTime ?? Date.now()).toISOString(),
+		totalElapsed: state.totalElapsed,
+		distance: state.distance,
+		trackPoints: state.locations.map((loc) => ({
+			latitude: loc.latitude,
+			longitude: loc.longitude,
+			timestamp: new Date(loc.timestamp).toISOString(),
+		})),
+	};
+
 	state.running = false;
 	state.paused = false;
 	state.startedAt = null;
+	state.rideStartTime = null;
+	state.totalElapsed = 0;
+	state.distance = 0;
+	state.locations = [];
 	notify();
+
+	return summary;
 }
 
 export function getElapsed(): number {

@@ -1,5 +1,5 @@
-import { router } from "expo-router";
-import { useEffect, useState } from "react";
+import { router, useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import {
 	Avatar,
@@ -30,20 +30,22 @@ export default function HomeScreen() {
 	});
 	const [loading, setLoading] = useState(true);
 
-	useEffect(() => {
-		(async () => {
-			try {
-				const res = await api.getRides({ pageSize: 5 });
-				setRides(res.data);
-				setTotalRides(res.meta.total);
-			} catch {}
-			try {
-				const s = await api.getRideStats();
-				setStats(s);
-			} catch {}
-			setLoading(false);
-		})();
-	}, []);
+	useFocusEffect(
+		useCallback(() => {
+			(async () => {
+				try {
+					const res = await api.getRides({ pageSize: 5 });
+					setRides(res.data);
+					setTotalRides(res.meta.total);
+				} catch {}
+				try {
+					const s = await api.getRideStats();
+					setStats(s);
+				} catch {}
+				setLoading(false);
+			})();
+		}, []),
+	);
 
 	const totalHrs = (stats.totalMin / 60).toFixed(1);
 	const initials = user?.username?.slice(0, 2).toUpperCase() ?? "??";
