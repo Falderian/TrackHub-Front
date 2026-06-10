@@ -11,6 +11,8 @@ ALIAS="${RELEASE_KEY_ALIAS:-trackhub-release}"
 echo "=== TrackHub — Release Signing Setup ==="
 echo ""
 
+docker compose up -d --build 2>&1 | tail -1
+
 # ---- keystore ----
 if [ -f "$KEYSTORE" ]; then
   echo "• keystore: already exists"
@@ -18,7 +20,7 @@ if [ -f "$KEYSTORE" ]; then
   [ -n "$PASSWORD" ] || { echo "ERROR: set RELEASE_KEY_PASSWORD or restore $PASSWORD_FILE"; exit 1; }
 else
   PASSWORD="${RELEASE_KEY_PASSWORD:-$(openssl rand -base64 32)}"
-  docker compose up -d --build 2>&1 | tail -1
+  docker compose exec -T builder mkdir -p /app/android/app
   docker compose exec -T builder keytool -genkeypair \
     -keystore "/app/$KEYSTORE" -alias "$ALIAS" \
     -keyalg RSA -keysize 2048 -validity 10000 \
@@ -31,10 +33,11 @@ else
 fi
 
 # ---- gradle.properties ----
-if grep -q "RELEASE_STORE_FILE" "$GRADLE_PROPS" 2>/dev/null; then
+# android/ files are root-owned (Docker), so modify inside the container
+if docker compose exec -T builder grep -q "RELEASE_STORE_FILE" "/app/$GRADLE_PROPS" 2>/dev/null; then
   echo "• gradle.properties: already configured"
 else
-  cat >> "$GRADLE_PROPS" <<EOF
+  docker compose exec -T builder bash -c "cat >> /app/$GRADLE_PROPS" <<EOF
 
 RELEASE_STORE_FILE=release.keystore
 RELEASE_KEY_ALIAS=$ALIAS
@@ -45,11 +48,11 @@ EOF
 fi
 
 # ---- build.gradle ----
-if grep -q "signingConfigs.release" "$BUILD_GRADLE" 2>/dev/null; then
+if docker compose exec -T builder grep -q "signingConfigs.release" "/app/$BUILD_GRADLE" 2>/dev/null; then
   echo "• build.gradle: already configured"
 else
-  python3 << 'PYEOF'
-path = "android/app/build.gradle"
+  docker compose exec -T builder python3 << 'PYEOF'
+path = "/app/android/app/build.gradle"
 with open(path) as f:
     c = f.read()
 

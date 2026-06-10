@@ -13,15 +13,15 @@ export default function StatusPill({ isIdle, isPaused }: Props) {
 	const bg = isIdle
 		? colors.surfaceVariant
 		: isPaused
-			? "#ebcb8b22"
-			: "#a3be8c22";
-	const border = isIdle ? colors.outline : isPaused ? "#ebcb8b" : "#a3be8c";
-	const dot = isIdle ? colors.outline : isPaused ? "#ebcb8b" : "#a3be8c";
+			? colors.warningContainer
+			: colors.tertiaryContainer;
+	const border = isIdle ? colors.outline : isPaused ? colors.warning : colors.tertiary;
+	const dot = isIdle ? colors.outline : isPaused ? colors.warning : colors.tertiary;
 	const textColor = isIdle
 		? colors.onSurfaceVariant
 		: isPaused
-			? "#ebcb8b"
-			: "#a3be8c";
+			? colors.onWarningContainer
+			: colors.onTertiaryContainer;
 	const label = isIdle ? "Ready to ride" : isPaused ? "PAUSED" : "Riding…";
 
 	return (
