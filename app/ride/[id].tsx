@@ -1,17 +1,49 @@
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, View } from "react-native";
 import { Icon, IconButton, Surface, Text, useTheme } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import RideChartPanel from "../../components/RideChartPanel";
 import RideMap from "../../components/RideMap";
+import RideStatsGrid from "../../components/RideStatsGrid";
 import { api } from "../../services/api";
-import type { Ride } from "../../types";
+import type { ChartArrays } from "../../types";
+
+function fmtDuration(totalSeconds: number): string {
+	const h = Math.floor(totalSeconds / 3600);
+	const m = Math.floor((totalSeconds % 3600) / 60);
+	const s = totalSeconds % 60;
+	if (h > 0) {
+		return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+	}
+	return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+function fmtPace(kmh: number): string {
+	if (kmh < 0.5) return "—";
+	const minPerKm = 60 / kmh;
+	const min = Math.floor(minPerKm);
+	const sec = Math.round((minPerKm - min) * 60);
+	return `${min}:${String(sec).padStart(2, "0")}`;
+}
 
 export default function RideDetailScreen() {
 	const { colors } = useTheme();
 	const insets = useSafeAreaInsets();
 	const { id } = useLocalSearchParams<{ id: string }>();
-	const [ride, setRide] = useState<(Ride & { trackPoints: { latitude: number; longitude: number }[] }) | null>(null);
+	const [ride, setRide] = useState<{
+		id: number;
+		title: string | null;
+		distance: number | null;
+		avgSpeed: number | null;
+		maxSpeed: number | null;
+		elevationGain: number;
+		elevationLoss: number;
+		startTime: string;
+		endTime: string | null;
+		trackPoints: { latitude: number; longitude: number }[];
+		chart: ChartArrays | null;
+	} | null>(null);
 	const [loading, setLoading] = useState(true);
 
 	useFocusEffect(
@@ -19,34 +51,77 @@ export default function RideDetailScreen() {
 			(async () => {
 				try {
 					const data = await api.getRide(Number(id));
-					setRide(data as typeof ride);
+					setRide(data as unknown as typeof ride);
 				} catch {}
 				setLoading(false);
 			})();
 		}, [id]),
 	);
 
+	const durSec = useMemo(() => {
+		if (!ride?.startTime || !ride?.endTime) return null;
+		return Math.round(
+			(new Date(ride.endTime).getTime() - new Date(ride.startTime).getTime()) /
+				1000,
+		);
+	}, [ride?.startTime, ride?.endTime]);
+
+	const mid =
+		ride?.trackPoints && ride.trackPoints.length > 0
+			? ride.trackPoints[Math.floor(ride.trackPoints.length / 2)]
+			: null;
+
 	if (loading || !ride) {
 		return (
-			<View style={[styles.container, styles.centered, { backgroundColor: colors.background }]}>
+			<View
+				style={[
+					styles.container,
+					styles.centered,
+					{ backgroundColor: colors.background },
+				]}
+			>
 				<ActivityIndicator size="large" color={colors.primary} />
 			</View>
 		);
 	}
 
-	const dur =
-		ride.startTime && ride.endTime
-			? Math.round(
-					(new Date(ride.endTime).getTime() -
-						new Date(ride.startTime).getTime()) /
-						60000,
-				)
-			: null;
+	const stats = [
+		{
+			icon: "map-marker-distance",
+			value: `${(ride.distance ?? 0).toFixed(1)}`,
+			unit: "km",
+			highlight: true,
+		},
+		{
+			icon: "clock-outline",
+			value: durSec != null ? fmtDuration(durSec) : "—",
+			unit: durSec != null && durSec >= 3600 ? "h:mm:ss" : "m:ss",
+		},
+		{
+			icon: "speedometer",
+			value: ride.avgSpeed != null ? `${ride.avgSpeed.toFixed(1)}` : "—",
+			unit: "km/h avg",
+		},
+		{
+			icon: "speedometer",
+			value: ride.maxSpeed != null ? `${ride.maxSpeed.toFixed(1)}` : "—",
+			unit: "km/h max",
+		},
+		{
+			icon: "timer-outline",
+			value: ride.avgSpeed != null ? fmtPace(ride.avgSpeed) : "—",
+			unit: "min/km",
+		},
+		{
+			icon: "arrow-up-bold",
+			value: `${Math.round(ride.elevationGain)}`,
+			unit: "m climb",
+			highlight: ride.elevationGain > 0,
+		},
+	];
 
-	const mid =
-		ride.trackPoints.length > 0
-			? ride.trackPoints[Math.floor(ride.trackPoints.length / 2)]
-			: null;
+	const hasElevation = ride.elevationGain > 0 || ride.elevationLoss > 0;
+	const hasCharts = ride.chart !== null;
 
 	return (
 		<View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -56,7 +131,10 @@ export default function RideDetailScreen() {
 					initialLon={mid?.longitude ?? 27.56}
 					locations={ride.trackPoints}
 				/>
-				<View style={[styles.mapScrim, { height: insets.top }]} pointerEvents="none" />
+				<View
+					style={[styles.mapScrim, { height: insets.top }]}
+					pointerEvents="none"
+				/>
 				<IconButton
 					icon="arrow-left"
 					size={22}
@@ -68,71 +146,97 @@ export default function RideDetailScreen() {
 
 			<ScrollView
 				style={styles.body}
-				contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
+				contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
+				showsVerticalScrollIndicator={false}
 			>
 				<Text
 					variant="titleMedium"
-					style={{ color: colors.onBackground, fontWeight: "700", marginBottom: 16 }}
+					style={{
+						color: colors.onBackground,
+						fontWeight: "700",
+						marginBottom: 16,
+						paddingHorizontal: 20,
+					}}
 				>
 					{ride.title}
 				</Text>
 
-				<View style={styles.statsGrid}>
-					<StatCard icon="map-marker-distance" value={`${(ride.distance ?? 0).toFixed(1)}`} unit="km" colors={colors} />
-					<StatCard icon="clock-outline" value={dur != null ? `${dur}` : "—"} unit="min" colors={colors} />
-					<StatCard icon="speedometer" value={ride.avgSpeed != null ? `${ride.avgSpeed.toFixed(1)}` : "—"} unit="km/h" colors={colors} />
-					<StatCard icon="speedometer" value={ride.maxSpeed != null ? `${ride.maxSpeed.toFixed(1)}` : "—"} unit="max km/h" colors={colors} />
-				</View>
-
-				{(ride.elevationGain > 0 || ride.elevationLoss > 0) && (
-					<View style={styles.elevationRow}>
-						<View style={styles.elevationItem}>
-							<Icon source="arrow-up-bold" size={18} color={colors.primary} />
-							<Text variant="labelMedium" style={{ color: colors.onSurface }}>
-								+{ride.elevationGain}m
-							</Text>
-						</View>
-						<View style={styles.elevationItem}>
-							<Icon source="arrow-down-bold" size={18} color={colors.error} />
-							<Text variant="labelMedium" style={{ color: colors.onSurface }}>
-								-{ride.elevationLoss}m
-							</Text>
-						</View>
+				{hasCharts && ride.chart ? (
+					<RideChartPanel chart={ride.chart} />
+				) : (
+					<View style={[styles.noChart, { backgroundColor: colors.surface }]}>
+						<Icon
+							source="chart-line"
+							size={32}
+							color={colors.onSurfaceVariant}
+						/>
+						<Text
+							variant="bodyMedium"
+							style={{ color: colors.onSurfaceVariant }}
+						>
+							No track data available for charts
+						</Text>
 					</View>
+				)}
+
+				<RideStatsGrid stats={stats} />
+
+				{hasElevation && (
+					<Surface
+						style={[styles.elevationCard, { backgroundColor: colors.surface }]}
+						elevation={1}
+					>
+						<View style={styles.elevationItem}>
+							<Icon source="arrow-up-bold" size={20} color={colors.primary} />
+							<View>
+								<Text
+									variant="labelLarge"
+									style={{ color: colors.onSurface, fontWeight: "700" }}
+								>
+									+{Math.round(ride.elevationGain)}m
+								</Text>
+								<Text
+									variant="labelSmall"
+									style={{ color: colors.onSurfaceVariant }}
+								>
+									elevation gain
+								</Text>
+							</View>
+						</View>
+						<View
+							style={[
+								styles.elevationDivider,
+								{ backgroundColor: colors.outline },
+							]}
+						/>
+						<View style={styles.elevationItem}>
+							<Icon source="arrow-down-bold" size={20} color={colors.error} />
+							<View>
+								<Text
+									variant="labelLarge"
+									style={{ color: colors.onSurface, fontWeight: "700" }}
+								>
+									−{Math.round(ride.elevationLoss)}m
+								</Text>
+								<Text
+									variant="labelSmall"
+									style={{ color: colors.onSurfaceVariant }}
+								>
+									elevation loss
+								</Text>
+							</View>
+						</View>
+					</Surface>
 				)}
 			</ScrollView>
 		</View>
 	);
 }
 
-function StatCard({
-	icon,
-	value,
-	unit,
-	colors,
-}: {
-	icon: string;
-	value: string;
-	unit: string;
-	colors: { surface: string; onSurface: string; primary: string; onSurfaceVariant: string };
-}) {
-	return (
-		<Surface style={[styles.statCard, { backgroundColor: colors.surface }]} elevation={1}>
-			<Icon source={icon} size={22} color={colors.primary} />
-			<Text variant="titleLarge" style={[styles.statValue, { color: colors.onSurface }]}>
-				{value}
-			</Text>
-			<Text variant="labelSmall" style={{ color: colors.onSurfaceVariant }}>
-				{unit}
-			</Text>
-		</Surface>
-	);
-}
-
 const styles = StyleSheet.create({
 	container: { flex: 1 },
 	centered: { justifyContent: "center", alignItems: "center" },
-	mapWrap: { height: "40%" },
+	mapWrap: { height: "35%" },
 	mapScrim: {
 		position: "absolute",
 		top: 0,
@@ -145,30 +249,28 @@ const styles = StyleSheet.create({
 		left: 4,
 		margin: 0,
 	},
-	body: { flex: 1, paddingHorizontal: 24, paddingTop: 20 },
-	statsGrid: {
-		flexDirection: "row",
-		flexWrap: "wrap",
-		gap: 12,
-		marginBottom: 16,
+	body: { flex: 1, paddingTop: 20 },
+	noChart: {
+		marginHorizontal: 20,
+		borderRadius: 16,
+		padding: 32,
+		alignItems: "center",
+		gap: 8,
+		marginBottom: 12,
 	},
-	statCard: {
-		flex: 1,
-		minWidth: "45%",
+	elevationCard: {
+		flexDirection: "row",
+		alignItems: "center",
+		marginHorizontal: 20,
+		marginTop: 12,
 		borderRadius: 14,
 		padding: 16,
-		alignItems: "center",
-		gap: 4,
-	},
-	statValue: { fontWeight: "800" },
-	elevationRow: {
-		flexDirection: "row",
-		gap: 24,
-		justifyContent: "center",
 	},
 	elevationItem: {
+		flex: 1,
 		flexDirection: "row",
 		alignItems: "center",
-		gap: 6,
+		gap: 10,
 	},
+	elevationDivider: { width: 1, height: 36, opacity: 0.3, marginHorizontal: 8 },
 });

@@ -15,8 +15,16 @@ export default function StatusPill({ isIdle, isPaused }: Props) {
 		: isPaused
 			? colors.warningContainer
 			: colors.tertiaryContainer;
-	const border = isIdle ? colors.outline : isPaused ? colors.warning : colors.tertiary;
-	const dot = isIdle ? colors.outline : isPaused ? colors.warning : colors.tertiary;
+	const border = isIdle
+		? colors.outline
+		: isPaused
+			? colors.warning
+			: colors.tertiary;
+	const dot = isIdle
+		? colors.outline
+		: isPaused
+			? colors.warning
+			: colors.tertiary;
 	const textColor = isIdle
 		? colors.onSurfaceVariant
 		: isPaused

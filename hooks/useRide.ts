@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { api } from "../services/api";
 import {
 	getElapsed,
 	getRideState,
@@ -9,7 +10,6 @@ import {
 	stopTracking,
 	subscribe,
 } from "../services/location";
-import { api } from "../services/api";
 
 export interface RideData {
 	state: RideState;

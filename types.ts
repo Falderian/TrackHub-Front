@@ -19,6 +19,16 @@ export interface RideStats {
 	totalMin: number;
 }
 
+export interface ChartPoint {
+	d: number;
+	v: number;
+}
+
+export interface ChartArrays {
+	elevation: ChartPoint[];
+	speed: ChartPoint[];
+}
+
 export interface PaginatedResponse<T> {
 	data: T[];
 	meta: {

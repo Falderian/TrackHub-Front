@@ -26,7 +26,11 @@ export default function RideCard({ ride }: { ride: Ride }) {
 						{ride.avgSpeed != null ? ` · ${ride.avgSpeed.toFixed(1)} km/h` : ""}
 					</Text>
 				</View>
-				<Icon source="chevron-right" size={18} color={colors.onSurfaceVariant} />
+				<Icon
+					source="chevron-right"
+					size={18}
+					color={colors.onSurfaceVariant}
+				/>
 			</Surface>
 		</Pressable>
 	);
