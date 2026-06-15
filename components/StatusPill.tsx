@@ -1,36 +1,39 @@
 import { StyleSheet, View } from "react-native";
 import { Text, useTheme } from "react-native-paper";
+import type { RideData } from "../hooks/useRide";
 
 interface Props {
-	isIdle: boolean;
-	isActive: boolean;
-	isPaused: boolean;
+	ride: RideData;
 }
 
-export default function StatusPill({ isIdle, isPaused }: Props) {
+export default function StatusPill({ ride }: Props) {
 	const { colors } = useTheme();
 
-	const bg = isIdle
+	const bg = ride.isIdle
 		? colors.surfaceVariant
-		: isPaused
+		: ride.isPaused
 			? colors.warningContainer
 			: colors.tertiaryContainer;
-	const border = isIdle
+	const border = ride.isIdle
 		? colors.outline
-		: isPaused
+		: ride.isPaused
 			? colors.warning
 			: colors.tertiary;
-	const dot = isIdle
+	const dot = ride.isIdle
 		? colors.outline
-		: isPaused
+		: ride.isPaused
 			? colors.warning
 			: colors.tertiary;
-	const textColor = isIdle
+	const textColor = ride.isIdle
 		? colors.onSurfaceVariant
-		: isPaused
+		: ride.isPaused
 			? colors.onWarningContainer
 			: colors.onTertiaryContainer;
-	const label = isIdle ? "Ready to ride" : isPaused ? "PAUSED" : "Riding…";
+	const label = ride.isIdle
+		? "Ready to ride"
+		: ride.isPaused
+			? "PAUSED"
+			: "Riding…";
 
 	return (
 		<View style={[styles.pill, { backgroundColor: bg, borderColor: border }]}>

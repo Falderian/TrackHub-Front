@@ -1,5 +1,5 @@
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import RideMap, { type RideMapHandle } from "../components/RideMap";
@@ -11,6 +11,7 @@ export default function RideScreen() {
 	const ride = useRide();
 	const mapRef = useRef<RideMapHandle>(null);
 	const insets = useSafeAreaInsets();
+	const [expanded, setExpanded] = useState(false);
 
 	useEffect(() => {
 		requestPermissions();
@@ -27,25 +28,36 @@ export default function RideScreen() {
 		<View style={styles.container}>
 			<StatusBar style="light" translucent backgroundColor="transparent" />
 
-			<RideMap
-				ref={mapRef}
-				initialLat={initialLat}
-				initialLon={initialLon}
-				locations={ride.state.locations}
-			/>
+			<View style={expanded ? styles.mapSmall : styles.mapFull}>
+				<RideMap
+					ref={mapRef}
+					initialLat={initialLat}
+					initialLon={initialLon}
+					locations={ride.state.locations}
+				/>
+			</View>
 
-			<View
-				style={[styles.statusBarScrim, { height: insets.top }]}
-				pointerEvents="none"
-			/>
+			{!expanded && (
+				<View
+					style={[styles.statusBarScrim, { height: insets.top }]}
+					pointerEvents="none"
+				/>
+			)}
 
-			<RidePanel ride={ride} mapRef={mapRef} />
+			<RidePanel
+				ride={ride}
+				mapRef={mapRef}
+				expanded={expanded}
+				onToggle={() => setExpanded((v) => !v)}
+			/>
 		</View>
 	);
 }
 
 const styles = StyleSheet.create({
 	container: { flex: 1 },
+	mapFull: { ...StyleSheet.absoluteFillObject },
+	mapSmall: { flex: 1 },
 	statusBarScrim: {
 		position: "absolute",
 		top: 0,

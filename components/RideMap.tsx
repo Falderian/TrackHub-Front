@@ -10,6 +10,7 @@ import {
 import * as Location from "expo-location";
 import React, {
 	useCallback,
+	useEffect,
 	useImperativeHandle,
 	useRef,
 	useState,
@@ -26,7 +27,8 @@ const EMPTY_STYLE = JSON.stringify({
 
 export interface RideMapHandle {
 	recenter: () => void;
-	cycleMapType: () => void;
+	autoCenter: boolean;
+	toggleAutoCenter: () => void;
 }
 
 interface Props {
@@ -41,7 +43,7 @@ const RideMap = React.forwardRef<RideMapHandle, Props>(function RideMap(
 ) {
 	const { colors } = useTheme();
 	const cameraRef = useRef<CameraRef>(null);
-	const [styleIdx, setStyleIdx] = useState(0);
+	const [autoCenter, setAutoCenter] = useState(false);
 
 	const recenter = useCallback(async () => {
 		const target =
@@ -68,14 +70,34 @@ const RideMap = React.forwardRef<RideMapHandle, Props>(function RideMap(
 		} catch {}
 	}, [locations]);
 
-	const cycleMapType = useCallback(() => {
-		setStyleIdx((i) => (i + 1) % TILE_STYLES.length);
+	const toggleAutoCenter = useCallback(() => {
+		setAutoCenter((v) => !v);
 	}, []);
 
-	useImperativeHandle(ref, () => ({ recenter, cycleMapType }), [
-		recenter,
-		cycleMapType,
-	]);
+	const lastLoc = locations[locations.length - 1];
+	const recenterRef = useRef(recenter);
+	recenterRef.current = recenter;
+
+	useEffect(() => {
+		if (!autoCenter || !lastLoc) return;
+		cameraRef.current?.easeTo({
+			center: [lastLoc.longitude, lastLoc.latitude],
+			zoom: 16,
+			duration: 300,
+		});
+	}, [autoCenter, lastLoc]);
+
+	useImperativeHandle(
+		ref,
+		() => ({
+			recenter,
+			get autoCenter() {
+				return autoCenter;
+			},
+			toggleAutoCenter,
+		}),
+		[recenter, autoCenter, toggleAutoCenter],
+	);
 
 	const routeData = React.useMemo(() => {
 		if (locations.length < 2) return null;
@@ -89,8 +111,6 @@ const RideMap = React.forwardRef<RideMapHandle, Props>(function RideMap(
 		};
 	}, [locations]);
 
-	const tile = TILE_STYLES[styleIdx];
-
 	return (
 		<Map style={styles.map} mapStyle={EMPTY_STYLE}>
 			<Camera
@@ -102,9 +122,8 @@ const RideMap = React.forwardRef<RideMapHandle, Props>(function RideMap(
 			/>
 
 			<RasterSource
-				key={styleIdx}
 				id="stadia-tiles"
-				tiles={[tile.url]}
+				tiles={[TILE_STYLES[0].url]}
 				tileSize={256}
 				minzoom={1}
 				maxzoom={20}

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { fmtTime } from "../helpers/ride";
 import { api } from "../services/api";
 import {
 	getElapsed,
@@ -24,15 +25,6 @@ export interface RideData {
 	pause: () => Promise<void>;
 	resume: () => Promise<void>;
 	stop: () => Promise<number | null>;
-}
-
-function fmtTime(s: number) {
-	const h = Math.floor(s / 3600);
-	const m = Math.floor((s % 3600) / 60);
-	const sec = s % 60;
-	if (h > 0)
-		return `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
-	return `${m}:${String(sec).padStart(2, "0")}`;
 }
 
 export function useRide(): RideData {

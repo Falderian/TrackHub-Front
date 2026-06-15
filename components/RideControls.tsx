@@ -1,10 +1,9 @@
 import { StyleSheet, View } from "react-native";
 import { Button, useTheme } from "react-native-paper";
+import type { RideData } from "../hooks/useRide";
 
 interface Props {
-	isIdle: boolean;
-	isActive: boolean;
-	isPaused: boolean;
+	ride: RideData;
 	onStart: () => void;
 	onPause: () => void;
 	onResume: () => void;
@@ -12,9 +11,7 @@ interface Props {
 }
 
 export default function RideControls({
-	isIdle,
-	isActive,
-	isPaused,
+	ride,
 	onStart,
 	onPause,
 	onResume,
@@ -24,7 +21,7 @@ export default function RideControls({
 
 	return (
 		<View style={styles.row}>
-			{isIdle && (
+			{ride.isIdle && (
 				<Button
 					mode="contained"
 					icon="bike"
@@ -38,54 +35,43 @@ export default function RideControls({
 				</Button>
 			)}
 
-			{isActive && (
-				<>
-					<Button
-						mode="outlined"
-						icon="pause"
-						onPress={onPause}
-						textColor={colors.primary}
-						style={[styles.half, { borderColor: colors.primary }]}
-						contentStyle={styles.halfInner}
-					>
-						Pause
-					</Button>
-					<Button
-						mode="contained"
-						icon="stop"
-						onPress={onStop}
-						buttonColor={colors.error}
-						style={styles.half}
-						contentStyle={styles.halfInner}
-					>
-						Stop
-					</Button>
-				</>
+			{ride.isActive && (
+				<Button
+					mode="outlined"
+					icon="pause"
+					onPress={onPause}
+					textColor={colors.primary}
+					style={[styles.half, { borderColor: colors.primary }]}
+					contentStyle={styles.halfInner}
+				>
+					Pause
+				</Button>
 			)}
 
-			{isPaused && (
-				<>
-					<Button
-						mode="contained"
-						icon="play"
-						onPress={onResume}
-						buttonColor={colors.primary}
-						style={styles.half}
-						contentStyle={styles.halfInner}
-					>
-						Resume
-					</Button>
-					<Button
-						mode="outlined"
-						icon="stop"
-						onPress={onStop}
-						textColor={colors.error}
-						style={[styles.half, { borderColor: colors.error }]}
-						contentStyle={styles.halfInner}
-					>
-						Stop
-					</Button>
-				</>
+			{ride.isPaused && (
+				<Button
+					mode="contained"
+					icon="play"
+					onPress={onResume}
+					buttonColor={colors.primary}
+					style={styles.half}
+					contentStyle={styles.halfInner}
+				>
+					Resume
+				</Button>
+			)}
+
+			{(ride.isActive || ride.isPaused) && (
+				<Button
+					mode="contained"
+					icon="stop"
+					onPress={onStop}
+					buttonColor={colors.error}
+					style={styles.half}
+					contentStyle={styles.halfInner}
+				>
+					Stop
+				</Button>
 			)}
 		</View>
 	);

@@ -6,26 +6,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import RideChartPanel from "../../components/RideChartPanel";
 import RideMap from "../../components/RideMap";
 import RideStatsGrid from "../../components/RideStatsGrid";
+import { fmtPace, fmtTime } from "../../helpers/ride";
 import { api } from "../../services/api";
 import type { ChartArrays } from "../../types";
-
-function fmtDuration(totalSeconds: number): string {
-	const h = Math.floor(totalSeconds / 3600);
-	const m = Math.floor((totalSeconds % 3600) / 60);
-	const s = totalSeconds % 60;
-	if (h > 0) {
-		return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-	}
-	return `${m}:${String(s).padStart(2, "0")}`;
-}
-
-function fmtPace(kmh: number): string {
-	if (kmh < 0.5) return "—";
-	const minPerKm = 60 / kmh;
-	const min = Math.floor(minPerKm);
-	const sec = Math.round((minPerKm - min) * 60);
-	return `${min}:${String(sec).padStart(2, "0")}`;
-}
 
 export default function RideDetailScreen() {
 	const { colors } = useTheme();
@@ -94,7 +77,7 @@ export default function RideDetailScreen() {
 		},
 		{
 			icon: "clock-outline",
-			value: durSec != null ? fmtDuration(durSec) : "—",
+			value: durSec != null ? fmtTime(durSec) : "—",
 			unit: durSec != null && durSec >= 3600 ? "h:mm:ss" : "m:ss",
 		},
 		{

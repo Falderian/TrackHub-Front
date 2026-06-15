@@ -2,22 +2,13 @@ import { useMemo } from "react";
 import { StyleSheet, View } from "react-native";
 import { LineChart } from "react-native-gifted-charts";
 import { Text, useTheme } from "react-native-paper";
+import { computeXLabels, fmtElevation } from "../helpers/ride";
 import type { ChartPoint } from "../types";
 
 interface Props {
 	data: ChartPoint[];
 	width: number;
 	height?: number;
-}
-
-function fmtElevation(m: number): string {
-	if (Math.abs(m) >= 1000) return `${(m / 1000).toFixed(1)}k`;
-	return `${Math.round(m)}`;
-}
-
-function fmtDist(km: number): string {
-	if (km >= 10) return `${Math.round(km)}k`;
-	return km.toFixed(1);
 }
 
 export default function ElevationProfile({
@@ -49,19 +40,7 @@ export default function ElevationProfile({
 		const paddedMax = max + pad;
 
 		const seriesData = points.map((p) => ({ value: p.v }));
-
-		const totalDist = points[points.length - 1].d;
-		const target = 6;
-		const raw = totalDist / (target - 1);
-		const nice = [1, 2, 5, 10, 20, 50, 100].find((n) => n >= raw) ?? raw;
-
-		const labels: { label: string; frac: number }[] = [];
-		let next = 0;
-		for (let km = 0; km <= totalDist + nice * 0.5; km += nice) {
-			while (next < points.length && points[next].d < km) next++;
-			const idx = next < points.length ? next : points.length - 1;
-			labels.push({ label: fmtDist(points[idx].d), frac: km / totalDist });
-		}
+		const labels = computeXLabels(points);
 
 		return {
 			series: seriesData,

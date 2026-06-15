@@ -1,5 +1,6 @@
 import * as Location from "expo-location";
 import * as TaskManager from "expo-task-manager";
+import { haversine } from "../helpers/ride";
 
 const TASK_NAME = "TRACKHUB_LOCATION";
 
@@ -44,19 +45,6 @@ const listeners = new Set<() => void>();
 
 function notify() {
 	for (const fn of listeners) fn();
-}
-
-function haversine(a: Coords, b: Coords): number {
-	const R = 6_371_000;
-	const toRad = (d: number) => (d * Math.PI) / 180;
-	const dLat = toRad(b.latitude - a.latitude);
-	const dLon = toRad(b.longitude - a.longitude);
-	const sinLat = Math.sin(dLat / 2);
-	const sinLon = Math.sin(dLon / 2);
-	const h =
-		sinLat * sinLat +
-		Math.cos(toRad(a.latitude)) * Math.cos(toRad(b.latitude)) * sinLon * sinLon;
-	return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
 
 export function getRideState(): Readonly<RideState> {

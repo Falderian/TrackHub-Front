@@ -1,22 +1,21 @@
 import { StyleSheet, View } from "react-native";
 import { Text, useTheme } from "react-native-paper";
+import type { RideData } from "../hooks/useRide";
 
 interface Props {
-	distanceKm: string;
-	elapsedStr: string;
-	speedKmh: string;
+	ride: RideData;
 }
 
-export default function RideStats({ distanceKm, elapsedStr, speedKmh }: Props) {
+export default function RideStats({ ride }: Props) {
 	const { colors } = useTheme();
 
 	return (
 		<View style={styles.row}>
-			<Stat value={distanceKm} label="kilometres" color={colors.primary} />
+			<Stat value={ride.distanceKm} label="kilometres" color={colors.primary} />
 			<View style={[styles.divider, { backgroundColor: colors.outline }]} />
-			<Stat value={elapsedStr} label="elapsed" color={colors.onSurface} />
+			<Stat value={ride.elapsedStr} label="elapsed" color={colors.onSurface} />
 			<View style={[styles.divider, { backgroundColor: colors.outline }]} />
-			<Stat value={speedKmh} label="km/h" color={colors.onSurface} />
+			<Stat value={ride.speedKmh} label="km/h" color={colors.onSurface} />
 		</View>
 	);
 }
