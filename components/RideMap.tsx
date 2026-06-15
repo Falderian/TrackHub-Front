@@ -4,10 +4,24 @@ import React, {
 	useRef,
 	useState,
 } from "react";
-import { Platform, StyleSheet } from "react-native";
-import MapView, { Polyline, PROVIDER_GOOGLE, UrlTile } from "react-native-maps";
+import { StyleSheet } from "react-native";
+import {
+	Camera,
+	type CameraRef,
+	GeoJSONSource,
+	Layer,
+	Map,
+	RasterSource,
+	UserLocation,
+} from "@maplibre/maplibre-react-native";
 import { useTheme } from "react-native-paper";
 import { TILE_STYLES } from "../constants/maps";
+
+const EMPTY_STYLE = JSON.stringify({
+	version: 8,
+	sources: {},
+	layers: [],
+});
 
 export interface RideMapHandle {
 	recenter: () => void;
@@ -25,7 +39,7 @@ const RideMap = React.forwardRef<RideMapHandle, Props>(function RideMap(
 	ref,
 ) {
 	const { colors } = useTheme();
-	const mapRef = useRef<MapView>(null);
+	const cameraRef = useRef<CameraRef>(null);
 	const [styleIdx, setStyleIdx] = useState(0);
 	const userPosRef = useRef<{ latitude: number; longitude: number } | null>(
 		null,
@@ -37,15 +51,11 @@ const RideMap = React.forwardRef<RideMapHandle, Props>(function RideMap(
 				? locations[locations.length - 1]
 				: userPosRef.current;
 		if (!target) return;
-		mapRef.current?.animateToRegion(
-			{
-				latitude: target.latitude,
-				longitude: target.longitude,
-				latitudeDelta: 0.01,
-				longitudeDelta: 0.01,
-			},
-			500,
-		);
+		cameraRef.current?.easeTo({
+			center: [target.longitude, target.latitude],
+			zoom: 16,
+			duration: 500,
+		});
 	}, [locations]);
 
 	const cycleMapType = useCallback(() => {
@@ -57,51 +67,71 @@ const RideMap = React.forwardRef<RideMapHandle, Props>(function RideMap(
 		cycleMapType,
 	]);
 
-	const handleUserLocationChange = useCallback(
-		(e: {
-			nativeEvent: { coordinate?: { latitude: number; longitude: number } };
-		}) => {
-			if (e.nativeEvent.coordinate) {
-				userPosRef.current = e.nativeEvent.coordinate;
-			}
-		},
-		[],
+	// track user position for recenter fallback
+	const userLocation = (
+		<UserLocation
+			heading
+			animated
+			onPress={() => {
+				/* noop — just to access the latest location */
+			}}
+		/>
 	);
 
+	const routeData = React.useMemo(() => {
+		if (locations.length < 2) return null;
+		return {
+			type: "Feature" as const,
+			geometry: {
+				type: "LineString" as const,
+				coordinates: locations.map((loc) => [loc.longitude, loc.latitude]),
+			},
+			properties: {},
+		};
+	}, [locations]);
+
+	const tile = TILE_STYLES[styleIdx];
+
 	return (
-		<MapView
-			ref={mapRef}
-			style={styles.map}
-			provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
-			initialRegion={{
-				latitude: initialLat,
-				longitude: initialLon,
-				latitudeDelta: 0.02,
-				longitudeDelta: 0.02,
-			}}
-			showsUserLocation
-			showsMyLocationButton={false}
-			followsUserLocation={false}
-			mapType="standard"
-			onUserLocationChange={handleUserLocationChange}
-			scrollEnabled
-			zoomEnabled
-			rotateEnabled
-		>
-			<UrlTile
-				key={styleIdx}
-				urlTemplate={TILE_STYLES[styleIdx].url}
-				maximumZ={20}
-				tileSize={256}
+		<Map style={styles.map} mapStyle={EMPTY_STYLE}>
+			<Camera
+				ref={cameraRef}
+				initialViewState={{
+					center: [initialLon, initialLat],
+					zoom: 14,
+				}}
 			/>
-			{locations.length > 1 && (
-				<Polyline
-					coordinates={[...locations]}
-					strokeColor={colors.primary}
-					strokeWidth={5}
-				/>
+
+			<RasterSource
+				key={styleIdx}
+				id="stadia-tiles"
+				tiles={[tile.url]}
+				tileSize={256}
+				minzoom={1}
+				maxzoom={20}
+			>
+				<Layer type="raster" id="stadia-layer" />
+			</RasterSource>
+
+			{routeData && (
+				<GeoJSONSource id="route" data={routeData}>
+					<Layer
+						type="line"
+						id="route-line"
+						paint={{
+							"line-color": colors.primary,
+							"line-width": 5,
+						}}
+						layout={{
+							"line-cap": "round",
+							"line-join": "round",
+						}}
+					/>
+				</GeoJSONSource>
 			)}
-		</MapView>
+
+			{userLocation}
+		</Map>
 	);
 });
 

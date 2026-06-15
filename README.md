@@ -17,16 +17,23 @@ Cycling GPS tracker mobile app. React Native + Expo + Paper UI.
 
 ```bash
 npm install
-npx expo start
+npx expo start --dev-client
 ```
 
-## Device testing
+## Device testing (dev build)
 
-1. Install [Expo Go](https://expo.dev/go) on your phone
-2. Run `npx expo start`
-3. Scan the QR code from the terminal, or connect to `exp://<your-lan-ip>:8081`
-4. The app loads over the network — no build, no cable
+This project uses native modules (`react-native-maps`, background location) that
+are **not available in Expo Go**. Building is containerized — no Android SDK on the host:
 
+```bash
+# Build the dev APK (Docker handles Android SDK)
+./build-dev-apk.sh
+
+# Start the dev server (host — JS bundler only)
+npx expo start --dev-client
+```
+
+Install the APK on your phone, then open the app and connect to the dev server URL.
 Your phone and machine must be on the same network.
 
 ## Backend
