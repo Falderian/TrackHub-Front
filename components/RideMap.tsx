@@ -1,10 +1,3 @@
-import React, {
-	useCallback,
-	useImperativeHandle,
-	useRef,
-	useState,
-} from "react";
-import { StyleSheet } from "react-native";
 import {
 	Camera,
 	type CameraRef,
@@ -14,6 +7,14 @@ import {
 	RasterSource,
 	UserLocation,
 } from "@maplibre/maplibre-react-native";
+import * as Location from "expo-location";
+import React, {
+	useCallback,
+	useImperativeHandle,
+	useRef,
+	useState,
+} from "react";
+import { StyleSheet } from "react-native";
 import { useTheme } from "react-native-paper";
 import { TILE_STYLES } from "../constants/maps";
 
@@ -41,21 +42,30 @@ const RideMap = React.forwardRef<RideMapHandle, Props>(function RideMap(
 	const { colors } = useTheme();
 	const cameraRef = useRef<CameraRef>(null);
 	const [styleIdx, setStyleIdx] = useState(0);
-	const userPosRef = useRef<{ latitude: number; longitude: number } | null>(
-		null,
-	);
 
-	const recenter = useCallback(() => {
+	const recenter = useCallback(async () => {
 		const target =
-			locations.length > 0
-				? locations[locations.length - 1]
-				: userPosRef.current;
-		if (!target) return;
-		cameraRef.current?.easeTo({
-			center: [target.longitude, target.latitude],
-			zoom: 16,
-			duration: 500,
-		});
+			locations.length > 0 ? locations[locations.length - 1] : null;
+
+		if (target) {
+			cameraRef.current?.easeTo({
+				center: [target.longitude, target.latitude],
+				zoom: 16,
+				duration: 500,
+			});
+			return;
+		}
+
+		try {
+			const pos = await Location.getCurrentPositionAsync({
+				accuracy: Location.Accuracy.Balanced,
+			});
+			cameraRef.current?.easeTo({
+				center: [pos.coords.longitude, pos.coords.latitude],
+				zoom: 16,
+				duration: 500,
+			});
+		} catch {}
 	}, [locations]);
 
 	const cycleMapType = useCallback(() => {
@@ -66,17 +76,6 @@ const RideMap = React.forwardRef<RideMapHandle, Props>(function RideMap(
 		recenter,
 		cycleMapType,
 	]);
-
-	// track user position for recenter fallback
-	const userLocation = (
-		<UserLocation
-			heading
-			animated
-			onPress={() => {
-				/* noop — just to access the latest location */
-			}}
-		/>
-	);
 
 	const routeData = React.useMemo(() => {
 		if (locations.length < 2) return null;
@@ -130,7 +129,7 @@ const RideMap = React.forwardRef<RideMapHandle, Props>(function RideMap(
 				</GeoJSONSource>
 			)}
 
-			{userLocation}
+			<UserLocation heading animated />
 		</Map>
 	);
 });

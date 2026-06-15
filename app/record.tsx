@@ -1,15 +1,20 @@
 import { StatusBar } from "expo-status-bar";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import RideMap, { type RideMapHandle } from "../components/RideMap";
 import RidePanel from "../components/RidePanel";
 import { useRide } from "../hooks/useRide";
+import { requestPermissions } from "../services/location";
 
 export default function RideScreen() {
 	const ride = useRide();
 	const mapRef = useRef<RideMapHandle>(null);
 	const insets = useSafeAreaInsets();
+
+	useEffect(() => {
+		requestPermissions();
+	}, []);
 
 	const { initialLat, initialLon } = useMemo(() => {
 		const locs = ride.state.locations;

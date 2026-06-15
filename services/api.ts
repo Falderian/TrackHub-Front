@@ -1,6 +1,9 @@
+import Constants from "expo-constants";
 import type { PaginatedResponse, Ride, RideStats } from "../types";
 
-const API_BASE = "https://trackhub.falderian.deno.net/";
+const API_BASE = __DEV__
+	? `http://${Constants.expoConfig?.hostUri?.split(":")[0] ?? "localhost"}:8000`
+	: "https://trackhub.falderian.deno.net/";
 
 let accessToken: string | null = null;
 let refreshToken: string | null = null;
