@@ -1,10 +1,13 @@
 import { Stack } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
 import { useColorScheme } from "react-native";
 import { PaperProvider } from "react-native-paper";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { nordDark, nordLight } from "../constants/theme";
 import { AuthProvider } from "../contexts/auth";
 import "../services/location";
+
+SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
 	const systemScheme = useColorScheme();
@@ -19,6 +22,7 @@ export default function RootLayout() {
 						<Stack.Screen name="home" />
 						<Stack.Screen name="dashboard" />
 						<Stack.Screen name="record" />
+						<Stack.Screen name="stats" />
 					</Stack>
 				</AuthProvider>
 			</PaperProvider>

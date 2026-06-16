@@ -57,11 +57,7 @@ export default function RideExpandedStats({ ride }: Props) {
 				/>
 				<DetailRow
 					label="Pace"
-					value={
-						paceMinPerKm !== "—"
-							? `${paceMinPerKm} /km`
-							: "—"
-					}
+					value={paceMinPerKm !== "—" ? `${paceMinPerKm} /km` : "—"}
 					muted={colors.onSurfaceVariant}
 				/>
 				<DetailRow

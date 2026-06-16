@@ -3,7 +3,7 @@ import {
 	type CameraRef,
 	GeoJSONSource,
 	Layer,
-	Map,
+	Map as MapLibre,
 	RasterSource,
 	UserLocation,
 } from "@maplibre/maplibre-react-native";
@@ -112,7 +112,7 @@ const RideMap = React.forwardRef<RideMapHandle, Props>(function RideMap(
 	}, [locations]);
 
 	return (
-		<Map style={styles.map} mapStyle={EMPTY_STYLE}>
+		<MapLibre style={styles.map} mapStyle={EMPTY_STYLE}>
 			<Camera
 				ref={cameraRef}
 				initialViewState={{
@@ -120,7 +120,6 @@ const RideMap = React.forwardRef<RideMapHandle, Props>(function RideMap(
 					zoom: 14,
 				}}
 			/>
-
 			<RasterSource
 				id="stadia-tiles"
 				tiles={[TILE_STYLES[0].url]}
@@ -130,7 +129,6 @@ const RideMap = React.forwardRef<RideMapHandle, Props>(function RideMap(
 			>
 				<Layer type="raster" id="stadia-layer" />
 			</RasterSource>
-
 			{routeData && (
 				<GeoJSONSource id="route" data={routeData}>
 					<Layer
@@ -147,9 +145,8 @@ const RideMap = React.forwardRef<RideMapHandle, Props>(function RideMap(
 					/>
 				</GeoJSONSource>
 			)}
-
 			<UserLocation heading animated />
-		</Map>
+		</MapLibre>
 	);
 });
 

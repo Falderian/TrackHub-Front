@@ -50,7 +50,7 @@ export default function ElevationProfile({
 			range: r + pad * 2,
 			xLabels: labels,
 		};
-	}, [points, "metric"]);
+	}, [points]);
 
 	if (series.length < 2) return null;
 
@@ -108,7 +108,7 @@ export default function ElevationProfile({
 			<View style={styles.xRow}>
 				<View style={styles.yAxis} />
 				<View style={[styles.xTrack, { width: chartW }]}>
-					{xLabels.map((xl, i) => (
+					{xLabels.map((xl, _i) => (
 						<Text
 							key={xl.label}
 							variant="labelSmall"

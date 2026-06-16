@@ -1,7 +1,16 @@
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, View } from "react-native";
-import { Button, Dialog, Icon, IconButton, Portal, Surface, Text, useTheme } from "react-native-paper";
+import {
+	Button,
+	Dialog,
+	Icon,
+	IconButton,
+	Portal,
+	Surface,
+	Text,
+	useTheme,
+} from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import RideChartPanel from "../../components/RideChartPanel";
 import RideMap from "../../components/RideMap";
@@ -48,7 +57,6 @@ export default function RideDetailScreen() {
 		try {
 			await api.deleteRide(Number(id));
 		} catch {
-			// Still dismiss — ride is gone from the user's perspective
 		} finally {
 			setShowDeleteDialog(false);
 			setDeleting(false);
@@ -153,7 +161,7 @@ export default function RideDetailScreen() {
 						style={{
 							color: colors.onBackground,
 							fontWeight: "700",
-								textAlign: "center",
+							textAlign: "center",
 							flex: 1,
 						}}
 						numberOfLines={2}
@@ -247,8 +255,8 @@ export default function RideDetailScreen() {
 					<Dialog.Title>Delete ride?</Dialog.Title>
 					<Dialog.Content>
 						<Text variant="bodyMedium">
-							This will permanently delete this ride and all its track data. This
-							action cannot be undone.
+							This will permanently delete this ride and all its track data.
+							This action cannot be undone.
 						</Text>
 					</Dialog.Content>
 					<Dialog.Actions>

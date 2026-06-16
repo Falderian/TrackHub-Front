@@ -1,4 +1,6 @@
 import { Redirect } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
+import { useEffect } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { Text, useTheme } from "react-native-paper";
 import { useAuth } from "../contexts/auth";
@@ -7,14 +9,13 @@ export default function Index() {
 	const { user, initializing } = useAuth();
 	const { colors } = useTheme();
 
+	useEffect(() => {
+		SplashScreen.hideAsync();
+	}, []);
+
 	if (initializing) {
 		return (
-			<View
-				style={[
-					styles.container,
-					{ backgroundColor: colors.background },
-				]}
-			>
+			<View style={[styles.container, { backgroundColor: colors.background }]}>
 				<ActivityIndicator size="large" color={colors.primary} />
 				<Text
 					variant="bodyMedium"

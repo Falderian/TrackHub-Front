@@ -60,7 +60,6 @@ export default function DashboardScreen() {
 			setRides((prev) => prev.filter((r) => r.id !== deleteTarget.id));
 			setTotalRides((prev) => prev - 1);
 		} catch {
-			// Failed — keep the ride in the list
 		} finally {
 			setDeleting(false);
 			setDeleteTarget(null);

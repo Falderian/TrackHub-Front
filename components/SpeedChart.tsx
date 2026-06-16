@@ -41,7 +41,7 @@ export default function SpeedChart({
 		const labels = computeXLabels(points, "metric");
 
 		return { series: seriesData, maxV: paddedMax, xLabels: labels };
-	}, [points, colors, "metric"]);
+	}, [points, colors]);
 
 	if (series.length < 2) return null;
 

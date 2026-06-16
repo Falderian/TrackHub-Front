@@ -61,7 +61,6 @@ export default function RegisterScreen() {
 				contentContainerStyle={styles.scroll}
 				keyboardShouldPersistTaps="handled"
 			>
-				{/* Branded Header */}
 				<View style={styles.header}>
 					<View
 						style={[
@@ -82,7 +81,6 @@ export default function RegisterScreen() {
 					</Text>
 				</View>
 
-				{/* Form Card */}
 				<Surface
 					style={[styles.card, { backgroundColor: colors.surface }]}
 					elevation={2}

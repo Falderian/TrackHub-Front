@@ -94,7 +94,6 @@ export async function startTracking(): Promise<void> {
 	const ok = await requestPermissions();
 	if (!ok) throw new Error("Location permission denied");
 
-	// Reset ride state for a brand-new ride
 	const now = Date.now();
 	state = {
 		running: true,

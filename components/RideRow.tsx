@@ -8,7 +8,10 @@ import SwipeableRow from "./SwipeableRow";
 export default function RideRow({
 	ride,
 	onDelete,
-}: { ride: Ride; onDelete?: () => void }) {
+}: {
+	ride: Ride;
+	onDelete?: () => void;
+}) {
 	const { colors } = useTheme();
 	const speedLabel = "km/h";
 	const dur =
@@ -21,9 +24,7 @@ export default function RideRow({
 			: null;
 
 	const distDisplay =
-		ride.distance != null
-			? fmtDist(ride.distance / 1000, "metric")
-			: null;
+		ride.distance != null ? fmtDist(ride.distance / 1000, "metric") : null;
 
 	const content = (
 		<Pressable onPress={() => router.push(`/ride/${ride.id}`)}>
@@ -31,9 +32,7 @@ export default function RideRow({
 				style={[styles.card, { backgroundColor: colors.surface }]}
 				elevation={1}
 			>
-				<View
-					style={[styles.icon, { backgroundColor: colors.surfaceVariant }]}
-				>
+				<View style={[styles.icon, { backgroundColor: colors.surfaceVariant }]}>
 					<Icon source="bike" size={20} color={colors.primary} />
 				</View>
 				<View style={styles.body}>

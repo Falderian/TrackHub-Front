@@ -1,8 +1,8 @@
 import { useCallback, useRef } from "react";
 import {
 	Animated,
-	PanResponder,
 	type GestureResponderEvent,
+	PanResponder,
 	type PanResponderGestureState,
 	Pressable,
 	StyleSheet,
@@ -67,7 +67,6 @@ export default function SwipeableRow({ children, onDelete }: Props) {
 
 	return (
 		<View style={styles.container}>
-			{/* Delete action behind the row */}
 			<View style={[styles.deleteAction, { backgroundColor: colors.error }]}>
 				<Pressable
 					onPress={() => {
@@ -86,7 +85,6 @@ export default function SwipeableRow({ children, onDelete }: Props) {
 				</Pressable>
 			</View>
 
-			{/* Foreground row */}
 			<Animated.View
 				style={{ transform: [{ translateX }] }}
 				{...panResponder.panHandlers}

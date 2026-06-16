@@ -153,7 +153,24 @@ export const api = {
 		request<{ id: number; email: string; username: string }>("/auth/me"),
 	health: () => request("/health"),
 
-	getRideStats: () => request<RideStats>("/rides/stats"),
+	getRideStats: (from?: string, to?: string) => {
+		const qs = new URLSearchParams();
+		if (from) qs.set("from", from);
+		if (to) qs.set("to", to);
+		const suffix = qs.toString() ? `?${qs}` : "";
+		return request<RideStats>(`/rides/stats${suffix}`);
+	},
+
+	getStatsBuckets: (
+		from: string,
+		to: string,
+		granularity: "day" | "week" | "month",
+	) => {
+		const qs = new URLSearchParams({ from, to, granularity });
+		return request<
+			{ label: string; distance: number; rides: number; minutes: number }[]
+		>(`/rides/stats/buckets?${qs}`);
+	},
 
 	getRides: (params?: { page?: number; pageSize?: number }) => {
 		const qs = new URLSearchParams();

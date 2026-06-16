@@ -38,7 +38,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 	const [user, setUser] = useState<User | null>(null);
 	const [initializing, setInitializing] = useState(true);
 
-	// Restore session from secure storage on mount
 	useEffect(() => {
 		(async () => {
 			try {
@@ -48,7 +47,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 					setUser(me);
 				}
 			} catch {
-				// Tokens exist but are invalid/expired — clear and proceed
 				clearApiTokens();
 			} finally {
 				setInitializing(false);

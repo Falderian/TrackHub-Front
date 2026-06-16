@@ -55,7 +55,6 @@ export default function LoginScreen() {
 				contentContainerStyle={styles.scroll}
 				keyboardShouldPersistTaps="handled"
 			>
-				{/* Branded Header */}
 				<View style={styles.header}>
 					<View
 						style={[
@@ -76,7 +75,6 @@ export default function LoginScreen() {
 					</Text>
 				</View>
 
-				{/* Form Card */}
 				<Surface
 					style={[styles.card, { backgroundColor: colors.surface }]}
 					elevation={2}
