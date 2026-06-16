@@ -17,6 +17,7 @@ export default function SpeedChart({
 	height = 180,
 }: Props) {
 	const { colors } = useTheme();
+	const speedUnit = "km/h";
 
 	const { series, maxV, xLabels } = useMemo(() => {
 		if (points.length < 2)
@@ -37,10 +38,10 @@ export default function SpeedChart({
 			dataPointColor: zoneColor(p.v, colors),
 		}));
 
-		const labels = computeXLabels(points);
+		const labels = computeXLabels(points, "metric");
 
 		return { series: seriesData, maxV: paddedMax, xLabels: labels };
-	}, [points, colors]);
+	}, [points, colors, "metric"]);
 
 	if (series.length < 2) return null;
 
@@ -69,7 +70,7 @@ export default function SpeedChart({
 					variant="labelSmall"
 					style={{ color: colors.onSurfaceVariant, marginLeft: "auto" }}
 				>
-					km/h
+					{speedUnit}
 				</Text>
 			</View>
 

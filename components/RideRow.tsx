@@ -1,10 +1,16 @@
 import { router } from "expo-router";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Icon, Surface, Text, useTheme } from "react-native-paper";
+import { fmtDist } from "../helpers/ride";
 import type { Ride } from "../types";
+import SwipeableRow from "./SwipeableRow";
 
-export default function RideRow({ ride }: { ride: Ride }) {
+export default function RideRow({
+	ride,
+	onDelete,
+}: { ride: Ride; onDelete?: () => void }) {
 	const { colors } = useTheme();
+	const speedLabel = "km/h";
 	const dur =
 		ride.startTime && ride.endTime
 			? Math.round(
@@ -14,13 +20,20 @@ export default function RideRow({ ride }: { ride: Ride }) {
 				)
 			: null;
 
-	return (
+	const distDisplay =
+		ride.distance != null
+			? fmtDist(ride.distance / 1000, "metric")
+			: null;
+
+	const content = (
 		<Pressable onPress={() => router.push(`/ride/${ride.id}`)}>
 			<Surface
 				style={[styles.card, { backgroundColor: colors.surface }]}
 				elevation={1}
 			>
-				<View style={[styles.icon, { backgroundColor: colors.surfaceVariant }]}>
+				<View
+					style={[styles.icon, { backgroundColor: colors.surfaceVariant }]}
+				>
 					<Icon source="bike" size={20} color={colors.primary} />
 				</View>
 				<View style={styles.body}>
@@ -33,8 +46,8 @@ export default function RideRow({ ride }: { ride: Ride }) {
 					</Text>
 					<Text variant="labelSmall" style={{ color: colors.onSurfaceVariant }}>
 						{dur != null ? `${dur}min` : ""}
-						{ride.distance != null
-							? `${dur != null ? " · " : ""}${ride.distance.toFixed(1)} km`
+						{distDisplay != null
+							? `${dur != null ? " · " : ""}${distDisplay}`
 							: ""}
 					</Text>
 				</View>
@@ -46,12 +59,17 @@ export default function RideRow({ ride }: { ride: Ride }) {
 						{ride.avgSpeed != null ? `${ride.avgSpeed.toFixed(1)}` : "—"}
 					</Text>
 					<Text variant="labelSmall" style={{ color: colors.onSurfaceVariant }}>
-						km/h
+						{speedLabel}
 					</Text>
 				</View>
 			</Surface>
 		</Pressable>
 	);
+
+	if (onDelete) {
+		return <SwipeableRow onDelete={onDelete}>{content}</SwipeableRow>;
+	}
+	return content;
 }
 
 const styles = StyleSheet.create({

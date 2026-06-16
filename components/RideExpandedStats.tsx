@@ -10,12 +10,14 @@ interface Props {
 
 export default function RideExpandedStats({ ride }: Props) {
 	const { colors } = useTheme();
+
 	const { currentSpeed, maxSpeed, paceMinPerKm } = useMemo(
 		() =>
 			computeRideMetrics(
 				ride.state.locations,
 				ride.state.distance,
 				ride.elapsed,
+				"metric",
 			),
 		[ride.state.locations, ride.state.distance, ride.elapsed],
 	);
@@ -55,7 +57,11 @@ export default function RideExpandedStats({ ride }: Props) {
 				/>
 				<DetailRow
 					label="Pace"
-					value={paceMinPerKm !== "—" ? `${paceMinPerKm} /km` : "—"}
+					value={
+						paceMinPerKm !== "—"
+							? `${paceMinPerKm} /km`
+							: "—"
+					}
 					muted={colors.onSurfaceVariant}
 				/>
 				<DetailRow

@@ -1,7 +1,15 @@
 import { router, useFocusEffect } from "expo-router";
-import { useCallback, useState } from "react";
+import { Fragment, useCallback, useState } from "react";
 import { ActivityIndicator, FlatList, StyleSheet, View } from "react-native";
-import { Icon, IconButton, Text, useTheme } from "react-native-paper";
+import {
+	Button,
+	Dialog,
+	Icon,
+	IconButton,
+	Portal,
+	Text,
+	useTheme,
+} from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import RideRow from "../components/RideRow";
 import { api } from "../services/api";
@@ -19,6 +27,8 @@ export default function DashboardScreen() {
 	});
 	const [loading, setLoading] = useState(true);
 	const [refreshing, setRefreshing] = useState(false);
+	const [deleteTarget, setDeleteTarget] = useState<Ride | null>(null);
+	const [deleting, setDeleting] = useState(false);
 
 	const fetchData = useCallback(async () => {
 		const [ridesRes, statsRes] = await Promise.all([
@@ -42,65 +52,112 @@ export default function DashboardScreen() {
 		setRefreshing(false);
 	}, [fetchData]);
 
+	const handleDelete = useCallback(async () => {
+		if (!deleteTarget) return;
+		setDeleting(true);
+		try {
+			await api.deleteRide(deleteTarget.id);
+			setRides((prev) => prev.filter((r) => r.id !== deleteTarget.id));
+			setTotalRides((prev) => prev - 1);
+		} catch {
+			// Failed — keep the ride in the list
+		} finally {
+			setDeleting(false);
+			setDeleteTarget(null);
+		}
+	}, [deleteTarget]);
+
 	const totalHrs = (stats.totalMin / 60).toFixed(1);
 	const totalEle = rides.reduce((s, r) => s + (r.elevationGain ?? 0), 0);
 
 	return (
-		<View
-			style={[
-				styles.container,
-				{ backgroundColor: colors.background, paddingBottom: insets.bottom },
-			]}
-		>
-			<View style={[styles.nav, { paddingTop: insets.top + 8 }]}>
-				<IconButton icon="arrow-left" size={22} onPress={() => router.back()} />
-				<Text
-					variant="titleMedium"
-					style={{ color: colors.onBackground, fontWeight: "700", flex: 1 }}
-				>
-					All Rides
-				</Text>
+		<Fragment>
+			<View
+				style={[
+					styles.container,
+					{ backgroundColor: colors.background, paddingBottom: insets.bottom },
+				]}
+			>
+				<View style={[styles.nav, { paddingTop: insets.top + 8 }]}>
+					<IconButton
+						icon="arrow-left"
+						size={22}
+						onPress={() => router.back()}
+					/>
+					<Text
+						variant="titleMedium"
+						style={{ color: colors.onBackground, fontWeight: "700", flex: 1 }}
+					>
+						All Rides
+					</Text>
+				</View>
+
+				{!loading && rides.length > 0 && (
+					<View style={styles.summary}>
+						<Stat label={`${totalRides} rides`} />
+						<Stat label={`${stats.totalKm.toFixed(0)} km`} />
+						<Stat label={`${totalHrs}h`} />
+						{totalEle > 0 && <Stat label={`+${totalEle}m`} />}
+					</View>
+				)}
+
+				{loading ? (
+					<View style={styles.loading}>
+						<ActivityIndicator size="large" color={colors.primary} />
+					</View>
+				) : (
+					<FlatList
+						data={rides}
+						keyExtractor={(item) => String(item.id)}
+						renderItem={({ item }) => (
+							<RideRow ride={item} onDelete={() => setDeleteTarget(item)} />
+						)}
+						contentContainerStyle={[
+							styles.list,
+							{ paddingBottom: insets.bottom + 16 },
+						]}
+						refreshing={refreshing}
+						onRefresh={onRefresh}
+						showsVerticalScrollIndicator={false}
+						ListEmptyComponent={
+							<View style={styles.empty}>
+								<Icon source="bike" size={48} color={colors.onSurfaceVariant} />
+								<Text
+									variant="bodyLarge"
+									style={{ color: colors.onSurfaceVariant, marginTop: 12 }}
+								>
+									No rides yet
+								</Text>
+							</View>
+						}
+					/>
+				)}
 			</View>
-
-			{!loading && rides.length > 0 && (
-				<View style={styles.summary}>
-					<Stat label={`${totalRides} rides`} />
-					<Stat label={`${stats.totalKm.toFixed(0)} km`} />
-					<Stat label={`${totalHrs}h`} />
-					{totalEle > 0 && <Stat label={`+${totalEle}m`} />}
-				</View>
-			)}
-
-			{loading ? (
-				<View style={styles.loading}>
-					<ActivityIndicator size="large" color={colors.primary} />
-				</View>
-			) : (
-				<FlatList
-					data={rides}
-					keyExtractor={(item) => String(item.id)}
-					renderItem={({ item }) => <RideRow ride={item} />}
-					contentContainerStyle={[
-						styles.list,
-						{ paddingBottom: insets.bottom + 16 },
-					]}
-					refreshing={refreshing}
-					onRefresh={onRefresh}
-					showsVerticalScrollIndicator={false}
-					ListEmptyComponent={
-						<View style={styles.empty}>
-							<Icon source="bike" size={48} color={colors.onSurfaceVariant} />
-							<Text
-								variant="bodyLarge"
-								style={{ color: colors.onSurfaceVariant, marginTop: 12 }}
-							>
-								No rides yet
-							</Text>
-						</View>
-					}
-				/>
-			)}
-		</View>
+			<Portal>
+				<Dialog
+					visible={deleteTarget !== null}
+					onDismiss={() => setDeleteTarget(null)}
+				>
+					<Dialog.Title>Delete ride?</Dialog.Title>
+					<Dialog.Content>
+						<Text variant="bodyMedium">
+							Permanently delete "{deleteTarget?.title ?? "this ride"}" and all
+							its track data?
+						</Text>
+					</Dialog.Content>
+					<Dialog.Actions>
+						<Button onPress={() => setDeleteTarget(null)}>Cancel</Button>
+						<Button
+							onPress={handleDelete}
+							loading={deleting}
+							textColor={colors.error}
+						>
+							Delete
+						</Button>
+					</Dialog.Actions>
+				</Dialog>
+			</Portal>
+		</Fragment>
 	);
 }
 

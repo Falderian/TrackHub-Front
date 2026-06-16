@@ -1,10 +1,14 @@
 import { router } from "expo-router";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Icon, Surface, Text, useTheme } from "react-native-paper";
+import { fmtDist } from "../helpers/ride";
 import type { Ride } from "../types";
 
 export default function RideCard({ ride }: { ride: Ride }) {
 	const { colors } = useTheme();
+	const speedLabel = "km/h";
+	const distDisplay =
+		ride.distance != null ? fmtDist(ride.distance / 1000, "metric") : "—";
 
 	return (
 		<Pressable onPress={() => router.push(`/ride/${ride.id}`)}>
@@ -22,8 +26,10 @@ export default function RideCard({ ride }: { ride: Ride }) {
 						{ride.title}
 					</Text>
 					<Text variant="labelSmall" style={{ color: colors.onSurfaceVariant }}>
-						{ride.distance != null ? `${ride.distance.toFixed(1)} km` : "—"}
-						{ride.avgSpeed != null ? ` · ${ride.avgSpeed.toFixed(1)} km/h` : ""}
+						{distDisplay}
+						{ride.avgSpeed != null
+							? ` · ${ride.avgSpeed.toFixed(1)} ${speedLabel}`
+							: ""}
 					</Text>
 				</View>
 				<Icon

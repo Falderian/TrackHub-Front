@@ -17,6 +17,7 @@ export default function ElevationProfile({
 	height = 180,
 }: Props) {
 	const { colors } = useTheme();
+	const elevUnit = "m";
 
 	const { series, minV, maxV, range, xLabels } = useMemo(() => {
 		if (points.length < 2)
@@ -40,7 +41,7 @@ export default function ElevationProfile({
 		const paddedMax = max + pad;
 
 		const seriesData = points.map((p) => ({ value: p.v }));
-		const labels = computeXLabels(points);
+		const labels = computeXLabels(points, "metric");
 
 		return {
 			series: seriesData,
@@ -49,7 +50,7 @@ export default function ElevationProfile({
 			range: r + pad * 2,
 			xLabels: labels,
 		};
-	}, [points]);
+	}, [points, "metric"]);
 
 	if (series.length < 2) return null;
 
@@ -63,19 +64,19 @@ export default function ElevationProfile({
 						variant="labelSmall"
 						style={[styles.axis, { color: colors.onSurfaceVariant }]}
 					>
-						{fmtElevation(maxV)}m
+						{fmtElevation(maxV, "metric")} {elevUnit}
 					</Text>
 					<Text
 						variant="labelSmall"
 						style={[styles.axis, { color: colors.onSurfaceVariant }]}
 					>
-						{fmtElevation(minV + range / 2)}m
+						{fmtElevation(minV + range / 2, "metric")} {elevUnit}
 					</Text>
 					<Text
 						variant="labelSmall"
 						style={[styles.axis, { color: colors.onSurfaceVariant }]}
 					>
-						{fmtElevation(minV)}m
+						{fmtElevation(minV, "metric")} {elevUnit}
 					</Text>
 				</View>
 

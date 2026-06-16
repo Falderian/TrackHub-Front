@@ -1,7 +1,7 @@
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, View } from "react-native";
-import { Icon, IconButton, Surface, Text, useTheme } from "react-native-paper";
+import { Button, Dialog, Icon, IconButton, Portal, Surface, Text, useTheme } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import RideChartPanel from "../../components/RideChartPanel";
 import RideMap from "../../components/RideMap";
@@ -28,6 +28,8 @@ export default function RideDetailScreen() {
 		chart: ChartArrays | null;
 	} | null>(null);
 	const [loading, setLoading] = useState(true);
+	const [deleting, setDeleting] = useState(false);
+	const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
 	useFocusEffect(
 		useCallback(() => {
@@ -40,6 +42,19 @@ export default function RideDetailScreen() {
 			})();
 		}, [id]),
 	);
+
+	const handleDelete = useCallback(async () => {
+		setDeleting(true);
+		try {
+			await api.deleteRide(Number(id));
+		} catch {
+			// Still dismiss — ride is gone from the user's perspective
+		} finally {
+			setShowDeleteDialog(false);
+			setDeleting(false);
+			router.back();
+		}
+	}, [id]);
 
 	const durSec = useMemo(() => {
 		if (!ride?.startTime || !ride?.endTime) return null;
@@ -118,13 +133,6 @@ export default function RideDetailScreen() {
 					style={[styles.mapScrim, { height: insets.top }]}
 					pointerEvents="none"
 				/>
-				<IconButton
-					icon="arrow-left"
-					size={22}
-					iconColor={colors.onPrimary}
-					style={[styles.backBtn, { top: insets.top + 4 }]}
-					onPress={() => router.back()}
-				/>
 			</View>
 
 			<ScrollView
@@ -132,17 +140,35 @@ export default function RideDetailScreen() {
 				contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
 				showsVerticalScrollIndicator={false}
 			>
-				<Text
-					variant="titleMedium"
-					style={{
-						color: colors.onBackground,
-						fontWeight: "700",
-						marginBottom: 16,
-						paddingHorizontal: 20,
-					}}
-				>
-					{ride.title}
-				</Text>
+				<View style={styles.titleRow}>
+					<IconButton
+						icon="arrow-left"
+						size={20}
+						iconColor={colors.primary}
+						style={styles.titleBtn}
+						onPress={() => router.back()}
+					/>
+					<Text
+						variant="titleMedium"
+						style={{
+							color: colors.onBackground,
+							fontWeight: "700",
+								textAlign: "center",
+							flex: 1,
+						}}
+						numberOfLines={2}
+					>
+						{ride.title}
+					</Text>
+					<IconButton
+						icon="delete"
+						size={20}
+						iconColor={colors.error}
+						style={styles.titleBtn}
+						onPress={() => setShowDeleteDialog(true)}
+						disabled={deleting}
+					/>
+				</View>
 
 				{hasCharts && ride.chart ? (
 					<RideChartPanel chart={ride.chart} />
@@ -212,6 +238,31 @@ export default function RideDetailScreen() {
 					</Surface>
 				)}
 			</ScrollView>
+
+			<Portal>
+				<Dialog
+					visible={showDeleteDialog}
+					onDismiss={() => setShowDeleteDialog(false)}
+				>
+					<Dialog.Title>Delete ride?</Dialog.Title>
+					<Dialog.Content>
+						<Text variant="bodyMedium">
+							This will permanently delete this ride and all its track data. This
+							action cannot be undone.
+						</Text>
+					</Dialog.Content>
+					<Dialog.Actions>
+						<Button onPress={() => setShowDeleteDialog(false)}>Cancel</Button>
+						<Button
+							onPress={handleDelete}
+							loading={deleting}
+							textColor={colors.error}
+						>
+							Delete
+						</Button>
+					</Dialog.Actions>
+				</Dialog>
+			</Portal>
 		</View>
 	);
 }
@@ -227,12 +278,18 @@ const styles = StyleSheet.create({
 		right: 0,
 		backgroundColor: "rgba(0,0,0,0.25)",
 	},
-	backBtn: {
-		position: "absolute",
-		left: 4,
-		margin: 0,
-	},
 	body: { flex: 1, paddingTop: 20 },
+	titleRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		paddingHorizontal: 12,
+		marginBottom: 16,
+	},
+	titleBtn: {
+		margin: 0,
+		width: 36,
+		height: 36,
+	},
 	noChart: {
 		marginHorizontal: 20,
 		borderRadius: 16,

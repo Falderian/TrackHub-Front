@@ -1,3 +1,5 @@
+type UnitSystem = "metric" | "imperial";
+
 export const haversine = (
 	a: { latitude: number; longitude: number },
 	b: { latitude: number; longitude: number },
@@ -26,14 +28,36 @@ export const fmtTime = (totalSeconds: number): string => {
 	return `${m}:${String(s).padStart(2, "0")}`;
 };
 
-export const fmtDist = (km: number): string =>
-	km >= 10 ? `${Math.round(km)}k` : km.toFixed(1);
+/** Format a distance value. Input is always km; display depends on unit. */
+export const fmtDist = (km: number, unit: UnitSystem = "metric"): string => {
+	if (unit === "imperial") {
+		const mi = km * 0.621371;
+		return mi >= 10 ? `${Math.round(mi)} mi` : mi.toFixed(1);
+	}
+	return km >= 10 ? `${Math.round(km)}k` : km.toFixed(1);
+};
 
-export const fmtElevation = (m: number): string =>
-	Math.abs(m) >= 1000 ? `${(m / 1000).toFixed(1)}k` : `${Math.round(m)}`;
+/** Format an elevation value. Input is always meters; display depends on unit. */
+export const fmtElevation = (m: number, unit: UnitSystem = "metric"): string => {
+	if (unit === "imperial") {
+		const ft = m * 3.28084;
+		return Math.abs(ft) >= 1000
+			? `${(ft / 1000).toFixed(1)}k ft`
+			: `${Math.round(ft)}`;
+	}
+	return Math.abs(m) >= 1000 ? `${(m / 1000).toFixed(1)}k` : `${Math.round(m)}`;
+};
 
-export const fmtPace = (kmh: number): string => {
+/** Format pace. Input is km/h; display depends on unit. */
+export const fmtPace = (kmh: number, unit: UnitSystem = "metric"): string => {
 	if (kmh < 0.5) return "—";
+	if (unit === "imperial") {
+		const mph = kmh * 0.621371;
+		const minPerMi = 60 / mph;
+		const min = Math.floor(minPerMi);
+		const sec = Math.round((minPerMi - min) * 60);
+		return `${min}:${String(sec).padStart(2, "0")}`;
+	}
 	const minPerKm = 60 / kmh;
 	const min = Math.floor(minPerKm);
 	const sec = Math.round((minPerKm - min) * 60);
@@ -42,6 +66,7 @@ export const fmtPace = (kmh: number): string => {
 
 export const computeXLabels = (
 	points: Array<{ d: number }>,
+	unit: UnitSystem = "metric",
 ): Array<{ label: string; frac: number }> => {
 	if (points.length < 2) return [];
 
@@ -55,7 +80,7 @@ export const computeXLabels = (
 	for (let km = 0; km <= totalDist + nice * 0.5; km += nice) {
 		while (next < points.length && points[next].d < km) next++;
 		const idx = next < points.length ? next : points.length - 1;
-		labels.push({ label: fmtDist(points[idx].d), frac: km / totalDist });
+		labels.push({ label: fmtDist(points[idx].d, unit), frac: km / totalDist });
 	}
 	return labels;
 };
@@ -83,6 +108,7 @@ export const computeRideMetrics = (
 	}>,
 	distance: number,
 	elapsed: number,
+	unit: UnitSystem = "metric",
 ): RideMetrics => {
 	let currentSpeed = "0.0";
 	let maxSpeed = 0;
@@ -104,7 +130,7 @@ export const computeRideMetrics = (
 	const distKm = distance / 1000;
 	const speedKmh = elapsed > 0 ? (distKm / (elapsed / 3600)) : 0;
 	const paceMinPerKm =
-		distKm > 0.01 && elapsed > 0 ? fmtPace(speedKmh) : "—";
+		distKm > 0.01 && elapsed > 0 ? fmtPace(speedKmh, unit) : "—";
 
 	return { currentSpeed, maxSpeed, paceMinPerKm };
 };

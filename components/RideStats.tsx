@@ -8,14 +8,16 @@ interface Props {
 
 export default function RideStats({ ride }: Props) {
 	const { colors } = useTheme();
+	const distLabel = "kilometres";
+	const speedLabel = "km/h";
 
 	return (
 		<View style={styles.row}>
-			<Stat value={ride.distanceKm} label="kilometres" color={colors.primary} />
+			<Stat value={ride.distanceKm} label={distLabel} color={colors.primary} />
 			<View style={[styles.divider, { backgroundColor: colors.outline }]} />
 			<Stat value={ride.elapsedStr} label="elapsed" color={colors.onSurface} />
 			<View style={[styles.divider, { backgroundColor: colors.outline }]} />
-			<Stat value={ride.speedKmh} label="km/h" color={colors.onSurface} />
+			<Stat value={ride.speedKmh} label={speedLabel} color={colors.onSurface} />
 		</View>
 	);
 }

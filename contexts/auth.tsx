@@ -4,9 +4,15 @@ import {
 	type ReactNode,
 	useCallback,
 	useContext,
+	useEffect,
 	useState,
 } from "react";
-import { api, clearTokens as clearApiTokens, setTokens } from "../services/api";
+import {
+	api,
+	clearTokens as clearApiTokens,
+	restoreTokens,
+	setTokens,
+} from "../services/api";
 
 type User = {
 	id: number;
@@ -16,25 +22,43 @@ type User = {
 
 type AuthState = {
 	user: User | null;
-	loading: boolean;
+	initializing: boolean;
 	login: (email: string, password: string) => Promise<void>;
 	register: (
 		email: string,
 		username: string,
 		password: string,
 	) => Promise<void>;
-	logout: () => void;
+	logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
 	const [user, setUser] = useState<User | null>(null);
-	const [loading, _setLoading] = useState(false);
+	const [initializing, setInitializing] = useState(true);
+
+	// Restore session from secure storage on mount
+	useEffect(() => {
+		(async () => {
+			try {
+				const restored = await restoreTokens();
+				if (restored) {
+					const me = await api.getMe();
+					setUser(me);
+				}
+			} catch {
+				// Tokens exist but are invalid/expired — clear and proceed
+				clearApiTokens();
+			} finally {
+				setInitializing(false);
+			}
+		})();
+	}, []);
 
 	const login = useCallback(async (email: string, password: string) => {
 		const data = await api.login({ email, password });
-		setTokens(data.accessToken, data.refreshToken);
+		await setTokens(data.accessToken, data.refreshToken);
 		const me = await api.getMe();
 		setUser(me);
 	}, []);
@@ -42,21 +66,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 	const register = useCallback(
 		async (email: string, username: string, password: string) => {
 			const data = await api.register({ email, username, password });
-			setTokens(data.accessToken, data.refreshToken);
+			await setTokens(data.accessToken, data.refreshToken);
 			const me = await api.getMe();
 			setUser(me);
 		},
 		[],
 	);
 
-	const logout = useCallback(() => {
-		clearApiTokens();
+	const logout = useCallback(async () => {
+		await clearApiTokens();
 		setUser(null);
 		router.replace("/(auth)/login");
 	}, []);
 
 	return (
-		<AuthContext.Provider value={{ user, loading, login, register, logout }}>
+		<AuthContext.Provider
+			value={{ user, initializing, login, register, logout }}
+		>
 			{children}
 		</AuthContext.Provider>
 	);

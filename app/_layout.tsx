@@ -7,8 +7,8 @@ import { AuthProvider } from "../contexts/auth";
 import "../services/location";
 
 export default function RootLayout() {
-	const scheme = useColorScheme();
-	const theme = scheme === "dark" ? nordDark : nordLight;
+	const systemScheme = useColorScheme();
+	const theme = systemScheme === "dark" ? nordDark : nordLight;
 
 	return (
 		<SafeAreaProvider>

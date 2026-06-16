@@ -1,6 +1,7 @@
+import { StatusBar } from "expo-status-bar";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { ActivityIndicator, StyleSheet, useColorScheme, View } from "react-native";
 import {
 	Avatar,
 	Button,
@@ -20,6 +21,7 @@ import type { Ride, RideStats } from "../types";
 export default function HomeScreen() {
 	const { user, logout } = useAuth();
 	const { colors } = useTheme();
+	const scheme = useColorScheme();
 	const insets = useSafeAreaInsets();
 	const [rides, setRides] = useState<Ride[]>([]);
 	const [totalRides, setTotalRides] = useState(0);
@@ -52,6 +54,11 @@ export default function HomeScreen() {
 
 	return (
 		<View style={[styles.container, { backgroundColor: colors.background }]}>
+			<StatusBar
+				style={scheme === "dark" ? "light" : "dark"}
+				backgroundColor={colors.background}
+			/>
+
 			<View style={styles.header}>
 				<View style={styles.welcomeRow}>
 					<Avatar.Text
