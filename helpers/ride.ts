@@ -19,6 +19,11 @@ export const haversine = (
 	return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 };
 
+export const roundTo = (n: number, decimals: number): number => {
+	const factor = 10 ** decimals;
+	return Math.round(n * factor) / factor;
+};
+
 export const fmtTime = (totalSeconds: number): string => {
 	const h = Math.floor(totalSeconds / 3600);
 	const m = Math.floor((totalSeconds % 3600) / 60);

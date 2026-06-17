@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fmtTime } from "../helpers/ride";
-import { api } from "../services/api";
 import {
 	getElapsed,
 	getRideState,
@@ -11,6 +10,7 @@ import {
 	stopTracking,
 	subscribe,
 } from "../services/location";
+import { useRideSync } from "./useRideSync";
 
 export interface RideData {
 	state: RideState;
@@ -31,6 +31,9 @@ export function useRide(): RideData {
 	const [rideState, setRideState] = useState<RideState>(getRideState);
 	const [elapsed, setElapsed] = useState(getElapsed);
 
+	const isActive = rideState.running && !rideState.paused;
+	const sync = useRideSync(isActive);
+
 	useEffect(() => {
 		const unsub = subscribe(() => setRideState({ ...getRideState() }));
 		return unsub;
@@ -50,12 +53,14 @@ export function useRide(): RideData {
 	const start = useCallback(async () => {
 		await startTracking();
 		refresh();
-	}, [refresh]);
+		await sync.beginRide();
+	}, [refresh, sync.beginRide]);
 
 	const pause = useCallback(async () => {
+		await sync.flush();
 		await pauseTracking();
 		refresh();
-	}, [refresh]);
+	}, [refresh, sync.flush]);
 
 	const resume = useCallback(async () => {
 		await resumeTracking();
@@ -65,20 +70,9 @@ export function useRide(): RideData {
 	const stop = useCallback(async (): Promise<number | null> => {
 		const summary = await stopTracking();
 		refresh();
-
-		if (summary?.trackPoints.length) {
-			try {
-				const ride = await api.createRide({
-					startTime: summary.startTime,
-					trackPoints: summary.trackPoints,
-				});
-				return (ride as { id: number }).id;
-			} catch (err) {
-				console.error("Failed to save ride:", err);
-			}
-		}
-		return null;
-	}, [refresh]);
+		if (!summary) return null;
+		return sync.completeRide(summary);
+	}, [refresh, sync.completeRide]);
 
 	const distanceKm = useMemo(
 		() => (rideState.distance / 1000).toFixed(2),
@@ -94,7 +88,6 @@ export function useRide(): RideData {
 	);
 
 	const isIdle = !rideState.running;
-	const isActive = rideState.running && !rideState.paused;
 	const isPaused = rideState.running && rideState.paused;
 
 	return useMemo(
