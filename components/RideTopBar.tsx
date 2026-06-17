@@ -44,9 +44,9 @@ export default function RideTopBar({
 					style={styles.btn}
 				/>
 				<IconButton
-					icon={autoCenter ? "crosshairs" : "crosshairs-gps"}
+					icon={autoCenter ? "crosshairs-gps" : "crosshairs"}
 					size={20}
-					iconColor={colors.primary}
+					iconColor={autoCenter ? colors.primary : colors.onSurfaceVariant}
 					onPress={() => mapRef.current?.toggleAutoCenter()}
 					style={styles.btn}
 				/>

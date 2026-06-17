@@ -71,7 +71,13 @@ const RideMap = React.forwardRef<RideMapHandle, Props>(function RideMap(
 	}, [locations]);
 
 	const toggleAutoCenter = useCallback(() => {
-		setAutoCenter((v) => !v);
+		setAutoCenter((v) => {
+			const next = !v;
+			if (next) {
+				setTimeout(() => recenterRef.current(), 100);
+			}
+			return next;
+		});
 	}, []);
 
 	const lastLoc = locations[locations.length - 1];

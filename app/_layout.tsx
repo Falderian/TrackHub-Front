@@ -23,6 +23,7 @@ export default function RootLayout() {
 						<Stack.Screen name="dashboard" />
 						<Stack.Screen name="record" />
 						<Stack.Screen name="stats" />
+						<Stack.Screen name="ride/[id]" />
 					</Stack>
 				</AuthProvider>
 			</PaperProvider>

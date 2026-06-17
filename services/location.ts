@@ -7,6 +7,8 @@ const TASK_NAME = "TRACKHUB_LOCATION";
 type Coords = {
 	latitude: number;
 	longitude: number;
+	altitude?: number;
+	speed?: number;
 	timestamp: number;
 };
 
@@ -17,6 +19,10 @@ export type RideState = {
 	rideStartTime: number | null;
 	totalElapsed: number;
 	distance: number;
+	elevationGain: number;
+	elevationLoss: number;
+	maxElevation: number;
+	minElevation: number;
 	locations: Coords[];
 };
 
@@ -24,9 +30,13 @@ export interface RideSummary {
 	startTime: string;
 	totalElapsed: number;
 	distance: number;
+	elevationGain: number;
+	elevationLoss: number;
 	trackPoints: {
 		latitude: number;
 		longitude: number;
+		elevation?: number;
+		speed?: number;
 		timestamp: string;
 	}[];
 }
@@ -38,6 +48,10 @@ let state: RideState = {
 	rideStartTime: null,
 	totalElapsed: 0,
 	distance: 0,
+	elevationGain: 0,
+	elevationLoss: 0,
+	maxElevation: -Infinity,
+	minElevation: Infinity,
 	locations: [],
 };
 
@@ -58,7 +72,7 @@ export function subscribe(fn: () => void): () => void {
 	};
 }
 
-TaskManager.defineTask(TASK_NAME, ({ data, error }) => {
+TaskManager.defineTask(TASK_NAME, async ({ data, error }) => {
 	if (error) {
 		console.warn("[TrackHub] location task error:", error.message);
 		return;
@@ -69,13 +83,26 @@ TaskManager.defineTask(TASK_NAME, ({ data, error }) => {
 
 	for (const loc of locations) {
 		const prev = state.locations[state.locations.length - 1];
+		const alt = loc.coords.altitude ?? undefined;
+		const spd = loc.coords.speed ?? undefined;
 		const coord: Coords = {
 			latitude: loc.coords.latitude,
 			longitude: loc.coords.longitude,
+			altitude: alt,
+			speed: spd,
 			timestamp: loc.timestamp,
 		};
 		if (prev) {
 			state.distance += haversine(prev, coord);
+			if (alt !== undefined && prev.altitude !== undefined) {
+				const diff = alt - prev.altitude;
+				if (diff > 0) state.elevationGain += diff;
+				else state.elevationLoss += Math.abs(diff);
+			}
+		}
+		if (alt !== undefined) {
+			if (alt > state.maxElevation) state.maxElevation = alt;
+			if (alt < state.minElevation) state.minElevation = alt;
 		}
 		state.locations.push(coord);
 	}
@@ -102,6 +129,10 @@ export async function startTracking(): Promise<void> {
 		rideStartTime: now,
 		totalElapsed: 0,
 		distance: 0,
+		elevationGain: 0,
+		elevationLoss: 0,
+		maxElevation: -Infinity,
+		minElevation: Infinity,
 		locations: [],
 	};
 
@@ -166,9 +197,13 @@ export async function stopTracking(): Promise<RideSummary | null> {
 		startTime: new Date(state.rideStartTime ?? Date.now()).toISOString(),
 		totalElapsed: state.totalElapsed,
 		distance: state.distance,
+		elevationGain: state.elevationGain,
+		elevationLoss: state.elevationLoss,
 		trackPoints: state.locations.map((loc) => ({
 			latitude: loc.latitude,
 			longitude: loc.longitude,
+			elevation: loc.altitude,
+			speed: loc.speed,
 			timestamp: new Date(loc.timestamp).toISOString(),
 		})),
 	};
@@ -179,6 +214,10 @@ export async function stopTracking(): Promise<RideSummary | null> {
 	state.rideStartTime = null;
 	state.totalElapsed = 0;
 	state.distance = 0;
+	state.elevationGain = 0;
+	state.elevationLoss = 0;
+	state.maxElevation = -Infinity;
+	state.minElevation = Infinity;
 	state.locations = [];
 	notify();
 
