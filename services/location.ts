@@ -8,6 +8,8 @@ type Coords = {
 	latitude: number;
 	longitude: number;
 	timestamp: number;
+	speed: number | null;
+	elevation: number | null;
 };
 
 export type RideState = {
@@ -28,6 +30,8 @@ export interface RideSummary {
 		latitude: number;
 		longitude: number;
 		timestamp: string;
+		speed?: number;
+		elevation?: number;
 	}[];
 }
 
@@ -69,10 +73,15 @@ TaskManager.defineTask(TASK_NAME, ({ data, error }) => {
 
 	for (const loc of locations) {
 		const prev = state.locations[state.locations.length - 1];
+		// expo-location may return seconds or ms depending on platform/version.
+		// Values below 1e12 (~2001 in ms) are Unix seconds; normalize to ms.
+		const ts = loc.timestamp < 1e12 ? loc.timestamp * 1000 : loc.timestamp;
 		const coord: Coords = {
 			latitude: loc.coords.latitude,
 			longitude: loc.coords.longitude,
-			timestamp: loc.timestamp,
+			timestamp: ts,
+			speed: loc.coords.speed ?? null,
+			elevation: loc.coords.altitude ?? null,
 		};
 		if (prev) {
 			state.distance += haversine(prev, coord);
@@ -170,6 +179,8 @@ export async function stopTracking(): Promise<RideSummary | null> {
 			latitude: loc.latitude,
 			longitude: loc.longitude,
 			timestamp: new Date(loc.timestamp).toISOString(),
+			speed: loc.speed ?? undefined,
+			elevation: loc.elevation ?? undefined,
 		})),
 	};
 

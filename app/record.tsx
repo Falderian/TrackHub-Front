@@ -1,17 +1,22 @@
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import RideMap, { type RideMapHandle } from "../components/RideMap";
 import RidePanel from "../components/RidePanel";
+import {
+	RecordUIProvider,
+	useRecordLayoutUI,
+	useRecordMapUI,
+} from "../contexts/RecordUIContext";
 import { useRide } from "../hooks/useRide";
 import { requestPermissions } from "../services/location";
 
-export default function RideScreen() {
+function RecordLayout() {
 	const ride = useRide();
-	const mapRef = useRef<RideMapHandle>(null);
 	const insets = useSafeAreaInsets();
-	const [expanded, setExpanded] = useState(false);
+	const { mapRef } = useRecordMapUI();
+	const { expanded } = useRecordLayoutUI();
 
 	useEffect(() => {
 		requestPermissions();
@@ -44,13 +49,18 @@ export default function RideScreen() {
 				/>
 			)}
 
-			<RidePanel
-				ride={ride}
-				mapRef={mapRef}
-				expanded={expanded}
-				onToggle={() => setExpanded((v) => !v)}
-			/>
+			<RidePanel ride={ride} />
 		</View>
+	);
+}
+
+export default function RideScreen() {
+	const mapRef = useRef<RideMapHandle>(null);
+
+	return (
+		<RecordUIProvider mapRef={mapRef}>
+			<RecordLayout />
+		</RecordUIProvider>
 	);
 }
 

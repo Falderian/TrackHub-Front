@@ -34,6 +34,10 @@ docker compose exec -T builder bash -c "
   if [ ! -d android ]; then
     echo '=== Generating native project ==='
     npx expo prebuild --platform android
+    # Add .debug suffix so dev APK installs alongside release
+    if ! grep -q 'applicationIdSuffix ".debug"' android/app/build.gradle 2>/dev/null; then
+      sed -i 's/debug {$/debug {\n            applicationIdSuffix ".debug"/' android/app/build.gradle
+    fi
   fi
   echo '=== Building APK ==='
   cd android && ./gradlew $VARIANT

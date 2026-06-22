@@ -7,12 +7,12 @@ import {
 	useEffect,
 	useState,
 } from "react";
+import { api } from "../services/api";
 import {
-	api,
 	clearTokens as clearApiTokens,
 	restoreTokens,
 	setTokens,
-} from "../services/api";
+} from "../services/tokens";
 
 type User = {
 	id: number;

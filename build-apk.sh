@@ -1,0 +1,1 @@
+/home/admin/Projects/TrackHub/front/build-dev-apk.sh

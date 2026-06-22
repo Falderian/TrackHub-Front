@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
-import { haversine, roundTo } from "../helpers/ride";
+import { roundTo } from "../helpers/ride";
 import { api } from "../services/api";
 import { getRideState, type RideSummary } from "../services/location";
 
@@ -24,6 +24,8 @@ export function useRideSync(isActive: boolean) {
 					latitude: p.latitude,
 					longitude: p.longitude,
 					timestamp: new Date(p.timestamp).toISOString(),
+					speed: p.speed ?? undefined,
+					elevation: p.elevation ?? undefined,
 				})),
 			);
 			lastFlushedRef.current += points.length;
@@ -69,28 +71,25 @@ export function useRideSync(isActive: boolean) {
 			if (!summary.trackPoints.length) return null;
 
 			const lastPoint = summary.trackPoints[summary.trackPoints.length - 1];
+			const distanceKm = summary.distance / 1000;
 			const durationHours = summary.totalElapsed / 3600;
-			const avgSpeed = durationHours > 0 ? summary.distance / durationHours : 0;
+			const avgSpeed = durationHours > 0 ? distanceKm / durationHours : 0;
+
+			// Use GPS chip Doppler speed (m/s → km/h) — far more accurate
+			// than computing from position deltas which are dominated by noise.
 			let maxSpeed = 0;
-			for (let i = 1; i < summary.trackPoints.length; i++) {
-				const dt =
-					(new Date(summary.trackPoints[i].timestamp).getTime() -
-						new Date(summary.trackPoints[i - 1].timestamp).getTime()) /
-					1000;
-				if (dt <= 0) continue;
-				const dist = haversine(
-					summary.trackPoints[i - 1],
-					summary.trackPoints[i],
-				);
-				const speed = dist / dt;
-				if (speed > maxSpeed) maxSpeed = speed;
+			for (const p of summary.trackPoints) {
+				if (p.speed != null && p.speed > 0) {
+					const kmh = p.speed * 3.6;
+					if (kmh > maxSpeed) maxSpeed = kmh;
+				}
 			}
 
 			if (id) {
 				try {
 					await api.updateRide(id, {
 						endTime: lastPoint.timestamp,
-						distance: roundTo(summary.distance, 2),
+						distance: roundTo(distanceKm, 2),
 						avgSpeed: roundTo(avgSpeed, 2),
 						maxSpeed: roundTo(maxSpeed, 2),
 					});

@@ -1,25 +1,25 @@
 import { router } from "expo-router";
 import { StyleSheet, View } from "react-native";
 import { IconButton, useTheme } from "react-native-paper";
+import { useRecordLayoutUI, useRecordMapUI } from "../contexts/RecordUIContext";
 import type { RideData } from "../hooks/useRide";
-import type { RideMapHandle } from "./RideMap";
 import StatusPill from "./StatusPill";
 
 interface Props {
 	ride: RideData;
-	mapRef: React.RefObject<RideMapHandle | null>;
-	expanded: boolean;
-	onToggle: () => void;
 }
 
-export default function RideTopBar({
-	ride,
-	mapRef,
-	expanded,
-	onToggle,
-}: Props) {
+export default function RideTopBar({ ride }: Props) {
 	const { colors } = useTheme();
-	const autoCenter = mapRef.current?.autoCenter ?? false;
+	const { autoCenter, setAutoCenter, mapRef } = useRecordMapUI();
+	const { expanded, setExpanded } = useRecordLayoutUI();
+
+	const handleCrosshairPress = () => {
+		setAutoCenter((v) => !v);
+		if (!autoCenter) {
+			mapRef.current?.recenter();
+		}
+	};
 
 	return (
 		<View style={styles.row}>
@@ -40,14 +40,14 @@ export default function RideTopBar({
 					icon={expanded ? "arrow-collapse" : "arrow-expand"}
 					size={20}
 					iconColor={colors.primary}
-					onPress={onToggle}
+					onPress={() => setExpanded((v) => !v)}
 					style={styles.btn}
 				/>
 				<IconButton
 					icon={autoCenter ? "crosshairs" : "crosshairs-gps"}
 					size={20}
-					iconColor={colors.primary}
-					onPress={() => mapRef.current?.toggleAutoCenter()}
+					iconColor={autoCenter ? colors.primary : colors.onSurfaceVariant}
+					onPress={handleCrosshairPress}
 					style={styles.btn}
 				/>
 			</View>

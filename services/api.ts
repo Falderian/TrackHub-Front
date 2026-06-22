@@ -1,99 +1,12 @@
-import Constants from "expo-constants";
-import * as SecureStore from "expo-secure-store";
 import type { PaginatedResponse, Ride, RideStats } from "../types";
-
-const API_BASE = __DEV__
-	? `http://${Constants.expoConfig?.hostUri?.split(":")[0] ?? "localhost"}:8000`
-	: "https://trackhub.falderian.deno.net/";
-
-const ACCESS_TOKEN_KEY = "trackhub_access_token";
-const REFRESH_TOKEN_KEY = "trackhub_refresh_token";
-
-let accessToken: string | null = null;
-let refreshToken: string | null = null;
-let refreshing: Promise<boolean> | null = null;
-
-export async function setTokens(access: string, refresh: string) {
-	accessToken = access;
-	refreshToken = refresh;
-	try {
-		await Promise.all([
-			SecureStore.setItemAsync(ACCESS_TOKEN_KEY, access),
-			SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refresh),
-		]);
-	} catch (err) {
-		console.error("[api] Failed to persist tokens:", err);
-	}
-}
-
-export async function clearTokens() {
-	accessToken = null;
-	refreshToken = null;
-	try {
-		await Promise.all([
-			SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY),
-			SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY),
-		]);
-	} catch (err) {
-		console.error("[api] Failed to clear tokens from secure storage:", err);
-	}
-}
-
-export function getAccessToken() {
-	return accessToken;
-}
-
-export async function restoreTokens(): Promise<boolean> {
-	try {
-		const [access, refresh] = await Promise.all([
-			SecureStore.getItemAsync(ACCESS_TOKEN_KEY),
-			SecureStore.getItemAsync(REFRESH_TOKEN_KEY),
-		]);
-		if (access && refresh) {
-			accessToken = access;
-			refreshToken = refresh;
-			return true;
-		}
-		return false;
-	} catch {
-		return false;
-	}
-}
-
-async function tryRefresh(): Promise<boolean> {
-	if (refreshing) return refreshing;
-
-	refreshing = (async () => {
-		try {
-			if (!refreshToken) return false;
-			const res = await fetch(`${API_BASE.replace(/\/+$/, "")}/auth/refresh`, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ refreshToken }),
-			});
-			if (!res.ok) {
-				clearTokens();
-				return false;
-			}
-			const json = await res.json();
-			await setTokens(json.accessToken, json.refreshToken);
-			return true;
-		} catch {
-			clearTokens();
-			return false;
-		} finally {
-			refreshing = null;
-		}
-	})();
-
-	return refreshing;
-}
+import { getApiBase } from "./config";
+import { getAccessToken, tryRefresh } from "./tokens";
 
 async function request<T = unknown>(
 	path: string,
 	options: RequestInit = {},
 ): Promise<T> {
-	const base = API_BASE.replace(/\/+$/, "");
+	const base = (await getApiBase()).replace(/\/+$/, "");
 	const url = `${base}${path}`;
 
 	const headers: Record<string, string> = {
@@ -101,16 +14,20 @@ async function request<T = unknown>(
 		...(options.headers as Record<string, string>),
 	};
 
+	const accessToken = getAccessToken();
 	if (accessToken) {
 		headers.Authorization = `Bearer ${accessToken}`;
 	}
 
 	let res = await fetch(url, { ...options, headers });
 
-	if (res.status === 401 && refreshToken) {
+	if (res.status === 401) {
 		const ok = await tryRefresh();
 		if (ok) {
-			headers.Authorization = `Bearer ${accessToken}`;
+			const newToken = getAccessToken();
+			if (newToken) {
+				headers.Authorization = `Bearer ${newToken}`;
+			}
 			res = await fetch(url, { ...options, headers });
 		}
 	}
@@ -141,12 +58,6 @@ export const api = {
 		request<{ accessToken: string; refreshToken: string }>("/auth/login", {
 			method: "POST",
 			body: JSON.stringify(data),
-		}),
-
-	refresh: () =>
-		request<{ accessToken: string; refreshToken: string }>("/auth/refresh", {
-			method: "POST",
-			body: JSON.stringify({ refreshToken }),
 		}),
 
 	getMe: () =>
@@ -227,4 +138,10 @@ export const api = {
 
 	deleteRide: (id: number) =>
 		request<void>(`/rides/${id}`, { method: "DELETE" }),
+
+	exportData: () =>
+		request<{
+			exportedAt: string;
+			rides: (Ride & { trackPoints: unknown[] })[];
+		}>("/rides/export"),
 };

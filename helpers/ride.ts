@@ -110,26 +110,30 @@ export const computeRideMetrics = (
 		latitude: number;
 		longitude: number;
 		timestamp?: number;
+		speed?: number | null;
 	}>,
 	distance: number,
 	elapsed: number,
 	unit: UnitSystem = "metric",
-): RideMetrics => {
-	let currentSpeed = "0.0";
+	stationary = false,
+): RideMetrics => { 
 	let maxSpeed = 0;
 
-	for (let i = 1; i < locations.length; i++) {
-		const a = locations[i - 1];
-		const b = locations[i];
-		const dt =
-			a.timestamp && b.timestamp
-				? (b.timestamp - a.timestamp) / 1000
-				: 1;
-		if (dt <= 0) continue;
-		const dist = haversine(a, b);
-		const speed = (dist / dt) * 3.6;
-		if (i === locations.length - 1) currentSpeed = speed.toFixed(1);
-		if (speed > maxSpeed) maxSpeed = speed;
+	for (const loc of locations) {
+		if (loc.speed != null && loc.speed > 0) {
+			const kmh = loc.speed * 3.6;
+			if (kmh > maxSpeed) maxSpeed = kmh;
+		}
+	}
+ 
+	let currentSpeed = "0.0";
+	if (!stationary) {
+		for (let i = locations.length - 1; i >= 0; i--) {
+			if (locations[i].speed != null) {
+				currentSpeed = (locations[i].speed! * 3.6).toFixed(1);
+				break;
+			}
+		}
 	}
 
 	const distKm = distance / 1000;

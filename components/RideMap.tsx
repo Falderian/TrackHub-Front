@@ -13,11 +13,11 @@ import React, {
 	useEffect,
 	useImperativeHandle,
 	useRef,
-	useState,
 } from "react";
 import { StyleSheet } from "react-native";
 import { useTheme } from "react-native-paper";
 import { TILE_STYLES } from "../constants/maps";
+import { useOptionalRecordMapUI } from "../contexts/RecordUIContext";
 
 const EMPTY_STYLE = JSON.stringify({
 	version: 8,
@@ -27,8 +27,6 @@ const EMPTY_STYLE = JSON.stringify({
 
 export interface RideMapHandle {
 	recenter: () => void;
-	autoCenter: boolean;
-	toggleAutoCenter: () => void;
 }
 
 interface Props {
@@ -43,7 +41,8 @@ const RideMap = React.forwardRef<RideMapHandle, Props>(function RideMap(
 ) {
 	const { colors } = useTheme();
 	const cameraRef = useRef<CameraRef>(null);
-	const [autoCenter, setAutoCenter] = useState(false);
+	const mapUI = useOptionalRecordMapUI();
+	const autoCenter = mapUI?.autoCenter ?? false;
 
 	const recenter = useCallback(async () => {
 		const target =
@@ -70,13 +69,7 @@ const RideMap = React.forwardRef<RideMapHandle, Props>(function RideMap(
 		} catch {}
 	}, [locations]);
 
-	const toggleAutoCenter = useCallback(() => {
-		setAutoCenter((v) => !v);
-	}, []);
-
 	const lastLoc = locations[locations.length - 1];
-	const recenterRef = useRef(recenter);
-	recenterRef.current = recenter;
 
 	useEffect(() => {
 		if (!autoCenter || !lastLoc) return;
@@ -91,12 +84,8 @@ const RideMap = React.forwardRef<RideMapHandle, Props>(function RideMap(
 		ref,
 		() => ({
 			recenter,
-			get autoCenter() {
-				return autoCenter;
-			},
-			toggleAutoCenter,
 		}),
-		[recenter, autoCenter, toggleAutoCenter],
+		[recenter],
 	);
 
 	const routeData = React.useMemo(() => {
