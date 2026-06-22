@@ -26,6 +26,13 @@ export default function RideExpandedStats({ ride }: Props) {
 		[ride.state.locations, ride.state.distance, ride.elapsed, stationary],
 	);
 
+	const eleGain = ride.state.elevationGain;
+	const eleLoss = ride.state.elevationLoss;
+	const maxEle =
+		ride.state.maxElevation > -Infinity
+			? Math.round(ride.state.maxElevation)
+			: null;
+
 	return (
 		<>
 			<View style={styles.grid}>
@@ -67,6 +74,21 @@ export default function RideExpandedStats({ ride }: Props) {
 				<DetailRow
 					label="Distance"
 					value={`${ride.state.distance.toFixed(0)} m`}
+					muted={colors.onSurfaceVariant}
+				/>
+				<DetailRow
+					label="Elevation gain"
+					value={eleGain > 0 ? `+${Math.round(eleGain)} m` : "—"}
+					muted={colors.onSurfaceVariant}
+				/>
+				<DetailRow
+					label="Elevation loss"
+					value={eleLoss > 0 ? `−${Math.round(eleLoss)} m` : "—"}
+					muted={colors.onSurfaceVariant}
+				/>
+				<DetailRow
+					label="Max elevation"
+					value={maxEle != null ? `${maxEle} m` : "—"}
 					muted={colors.onSurfaceVariant}
 				/>
 				<DetailRow

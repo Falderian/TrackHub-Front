@@ -1,81 +1,44 @@
-import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, View } from "react-native";
+import {
+	ActivityIndicator,
+	ScrollView,
+	StyleSheet,
+	useWindowDimensions,
+	View,
+} from "react-native";
 import {
 	Button,
-	Dialog,
+	Divider,
 	Icon,
-	IconButton,
-	Portal,
 	Surface,
 	Text,
 	useTheme,
 } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import RideChartPanel from "../../components/RideChartPanel";
+import DeleteRideDialog from "../../components/DeleteRideDialog";
+import ElevationProfile from "../../components/ElevationProfile";
+import RideDetailHeader from "../../components/RideDetailHeader";
 import RideMap from "../../components/RideMap";
-import RideStatsGrid from "../../components/RideStatsGrid";
-import { fmtPace, fmtTime } from "../../helpers/ride";
-import { api } from "../../services/api";
-import type { ChartArrays } from "../../types";
+import SpeedChart from "../../components/SpeedChart";
+import useRideDetail from "../../hooks/useRideDetail";
 
 export default function RideDetailScreen() {
 	const { colors } = useTheme();
 	const insets = useSafeAreaInsets();
-	const { id } = useLocalSearchParams<{ id: string }>();
-	const [ride, setRide] = useState<{
-		id: number;
-		title: string | null;
-		distance: number | null;
-		avgSpeed: number | null;
-		maxSpeed: number | null;
-		elevationGain: number;
-		elevationLoss: number;
-		startTime: string;
-		endTime: string | null;
-		trackPoints: { latitude: number; longitude: number }[];
-		chart: ChartArrays | null;
-	} | null>(null);
-	const [loading, setLoading] = useState(true);
-	const [deleting, setDeleting] = useState(false);
-	const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-
-	useFocusEffect(
-		useCallback(() => {
-			(async () => {
-				try {
-					const data = await api.getRide(Number(id));
-					setRide(data as unknown as typeof ride);
-				} catch {}
-				setLoading(false);
-			})();
-		}, [id]),
-	);
-
-	const handleDelete = useCallback(async () => {
-		setDeleting(true);
-		try {
-			await api.deleteRide(Number(id));
-		} catch {
-		} finally {
-			setShowDeleteDialog(false);
-			setDeleting(false);
-			router.back();
-		}
-	}, [id]);
-
-	const durSec = useMemo(() => {
-		if (!ride?.startTime || !ride?.endTime) return null;
-		return Math.round(
-			(new Date(ride.endTime).getTime() - new Date(ride.startTime).getTime()) /
-				1000,
-		);
-	}, [ride?.startTime, ride?.endTime]);
-
-	const mid =
-		ride?.trackPoints && ride.trackPoints.length > 0
-			? ride.trackPoints[Math.floor(ride.trackPoints.length / 2)]
-			: null;
+	const { width: screenW } = useWindowDimensions();
+	const {
+		ride,
+		loading,
+		deleting,
+		showDeleteDialog,
+		setShowDeleteDialog,
+		handleDelete,
+		dateLabel,
+		timeRange,
+		durLabel,
+		mid,
+		details,
+		hasCharts,
+	} = useRideDetail();
 
 	if (loading || !ride) {
 		return (
@@ -91,43 +54,7 @@ export default function RideDetailScreen() {
 		);
 	}
 
-	const stats = [
-		{
-			icon: "map-marker-distance",
-			value: `${(ride.distance ?? 0).toFixed(1)}`,
-			unit: "km",
-			highlight: true,
-		},
-		{
-			icon: "clock-outline",
-			value: durSec != null ? fmtTime(durSec) : "—",
-			unit: durSec != null && durSec >= 3600 ? "h:mm:ss" : "m:ss",
-		},
-		{
-			icon: "speedometer",
-			value: ride.avgSpeed != null ? `${ride.avgSpeed.toFixed(1)}` : "—",
-			unit: "km/h avg",
-		},
-		{
-			icon: "speedometer",
-			value: ride.maxSpeed != null ? `${ride.maxSpeed.toFixed(1)}` : "—",
-			unit: "km/h max",
-		},
-		{
-			icon: "timer-outline",
-			value: ride.avgSpeed != null ? fmtPace(ride.avgSpeed) : "—",
-			unit: "min/km",
-		},
-		{
-			icon: "arrow-up-bold",
-			value: `${Math.round(ride.elevationGain)}`,
-			unit: "m climb",
-			highlight: ride.elevationGain > 0,
-		},
-	];
-
-	const hasElevation = ride.elevationGain > 0 || ride.elevationLoss > 0;
-	const hasCharts = ride.chart !== null;
+	const chartW = screenW - 40 - 32 - 52; // screen - outer pad - card pad - y-axis
 
 	return (
 		<View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -137,188 +64,283 @@ export default function RideDetailScreen() {
 					initialLon={mid?.longitude ?? 27.56}
 					locations={ride.trackPoints}
 				/>
-				<View
-					style={[styles.mapScrim, { height: insets.top }]}
-					pointerEvents="none"
-				/>
 			</View>
 
 			<ScrollView
 				style={styles.body}
-				contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
+				contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
 				showsVerticalScrollIndicator={false}
 			>
-				<View style={styles.titleRow}>
-					<IconButton
-						icon="arrow-left"
-						size={20}
-						iconColor={colors.primary}
-						style={styles.titleBtn}
-						onPress={() => router.back()}
-					/>
+				<RideDetailHeader
+					onDelete={() => setShowDeleteDialog(true)}
+					deleting={deleting}
+				/>
+
+				<View style={styles.titleBlock}>
 					<Text
-						variant="titleMedium"
-						style={{
-							color: colors.onBackground,
-							fontWeight: "700",
-							textAlign: "center",
-							flex: 1,
-						}}
+						variant="headlineSmall"
+						style={{ color: colors.onBackground, fontWeight: "700" }}
 						numberOfLines={2}
 					>
 						{ride.title}
 					</Text>
-					<IconButton
-						icon="delete"
-						size={20}
-						iconColor={colors.error}
-						style={styles.titleBtn}
-						onPress={() => setShowDeleteDialog(true)}
-						disabled={deleting}
-					/>
+					{dateLabel && (
+						<Text
+							variant="bodySmall"
+							style={{ color: colors.onSurfaceVariant }}
+						>
+							{dateLabel}
+							{timeRange ? ` · ${timeRange}` : ""}
+							{durLabel ? ` · ${durLabel}` : ""}
+						</Text>
+					)}
+				</View>
+
+				<View style={styles.heroRow}>
+					<Surface
+						style={[styles.heroCard, { backgroundColor: colors.surface }]}
+						elevation={0}
+					>
+						<Text
+							variant="headlineMedium"
+							style={[styles.heroNum, { color: colors.primary }]}
+						>
+							{(ride.distance ?? 0).toFixed(1)}
+						</Text>
+						<Text
+							variant="labelSmall"
+							style={{ color: colors.onSurfaceVariant }}
+						>
+							kilometres
+						</Text>
+					</Surface>
+					<Surface
+						style={[styles.heroCard, { backgroundColor: colors.surface }]}
+						elevation={0}
+					>
+						<Text
+							variant="headlineMedium"
+							style={[styles.heroNum, { color: colors.onSurface }]}
+						>
+							{durLabel ?? "—"}
+						</Text>
+						<Text
+							variant="labelSmall"
+							style={{ color: colors.onSurfaceVariant }}
+						>
+							moving time
+						</Text>
+					</Surface>
+					<Surface
+						style={[styles.heroCard, { backgroundColor: colors.surface }]}
+						elevation={0}
+					>
+						<Text
+							variant="headlineMedium"
+							style={[
+								styles.heroNum,
+								{
+									color:
+										ride.elevationGain > 0 ? colors.primary : colors.onSurface,
+								},
+							]}
+						>
+							{Math.round(ride.elevationGain)}
+						</Text>
+						<Text
+							variant="labelSmall"
+							style={{ color: colors.onSurfaceVariant }}
+						>
+							metres ↑
+						</Text>
+					</Surface>
+				</View>
+
+				<View style={styles.sectionLabel}>
+					<Text
+						variant="titleSmall"
+						style={{ color: colors.onSurface, fontWeight: "700" }}
+					>
+						Details
+					</Text>
+				</View>
+				<View style={styles.detailGrid}>
+					{details.map((d) => (
+						<Surface
+							key={d.icon + d.label}
+							style={[styles.detailCard, { backgroundColor: colors.surface }]}
+							elevation={0}
+						>
+							<Icon source={d.icon} size={16} color={colors.onSurfaceVariant} />
+							<Text
+								variant="bodyLarge"
+								style={[styles.detailVal, { color: colors.onSurface }]}
+								numberOfLines={1}
+								adjustsFontSizeToFit
+							>
+								{d.value}
+							</Text>
+							<Text
+								variant="labelSmall"
+								style={{ color: colors.onSurfaceVariant }}
+							>
+								{d.label}
+							</Text>
+						</Surface>
+					))}
 				</View>
 
 				{hasCharts && ride.chart ? (
-					<RideChartPanel chart={ride.chart} />
-				) : (
-					<View style={[styles.noChart, { backgroundColor: colors.surface }]}>
-						<Icon
-							source="chart-line"
-							size={32}
-							color={colors.onSurfaceVariant}
-						/>
-						<Text
-							variant="bodyMedium"
-							style={{ color: colors.onSurfaceVariant }}
+					<View style={styles.chartSection}>
+						<Surface
+							style={[styles.chartCard, { backgroundColor: colors.surface }]}
+							elevation={0}
 						>
-							No track data available for charts
-						</Text>
+							<View style={styles.chartHeader}>
+								<Icon source="speedometer" size={18} color={colors.primary} />
+								<Text
+									variant="labelLarge"
+									style={{ color: colors.onSurface, fontWeight: "600" }}
+								>
+									Speed
+								</Text>
+								<View style={{ flex: 1 }} />
+								<Text
+									variant="labelMedium"
+									style={{ color: colors.primary, fontWeight: "700" }}
+								>
+									{ride.avgSpeed != null
+										? `${ride.avgSpeed.toFixed(1)} km/h`
+										: "—"}
+								</Text>
+							</View>
+							<SpeedChart
+								data={ride.chart.speed}
+								width={chartW + 52}
+								height={140}
+							/>
+						</Surface>
+
+						{ride.chart.elevation.length >= 2 && (
+							<Surface
+								style={[styles.chartCard, { backgroundColor: colors.surface }]}
+								elevation={0}
+							>
+								<View style={styles.chartHeader}>
+									<Icon
+										source="image-filter-hdr"
+										size={18}
+										color={colors.primary}
+									/>
+									<Text
+										variant="labelLarge"
+										style={{ color: colors.onSurface, fontWeight: "600" }}
+									>
+										Elevation
+									</Text>
+									<View style={{ flex: 1 }} />
+									<Text
+										variant="labelSmall"
+										style={{ color: colors.onSurfaceVariant }}
+									>
+										+{Math.round(ride.elevationGain)} · −
+										{Math.round(ride.elevationLoss)} m
+									</Text>
+								</View>
+								<ElevationProfile
+									data={ride.chart.elevation}
+									width={chartW + 52}
+									height={140}
+								/>
+							</Surface>
+						)}
 					</View>
-				)}
+				) : null}
 
-				<RideStatsGrid stats={stats} />
-
-				{hasElevation && (
-					<Surface
-						style={[styles.elevationCard, { backgroundColor: colors.surface }]}
-						elevation={1}
-					>
-						<View style={styles.elevationItem}>
-							<Icon source="arrow-up-bold" size={20} color={colors.primary} />
-							<View>
-								<Text
-									variant="labelLarge"
-									style={{ color: colors.onSurface, fontWeight: "700" }}
-								>
-									+{Math.round(ride.elevationGain)}m
-								</Text>
-								<Text
-									variant="labelSmall"
-									style={{ color: colors.onSurfaceVariant }}
-								>
-									elevation gain
-								</Text>
-							</View>
-						</View>
-						<View
-							style={[
-								styles.elevationDivider,
-								{ backgroundColor: colors.outline },
-							]}
-						/>
-						<View style={styles.elevationItem}>
-							<Icon source="arrow-down-bold" size={20} color={colors.error} />
-							<View>
-								<Text
-									variant="labelLarge"
-									style={{ color: colors.onSurface, fontWeight: "700" }}
-								>
-									−{Math.round(ride.elevationLoss)}m
-								</Text>
-								<Text
-									variant="labelSmall"
-									style={{ color: colors.onSurfaceVariant }}
-								>
-									elevation loss
-								</Text>
-							</View>
-						</View>
-					</Surface>
-				)}
+				<Divider
+					style={[styles.divider, { backgroundColor: colors.outline }]}
+				/>
+				<Button
+					mode="text"
+					icon="delete"
+					textColor={colors.error}
+					contentStyle={styles.deleteBtn}
+					onPress={() => setShowDeleteDialog(true)}
+					disabled={deleting}
+				>
+					Delete ride
+				</Button>
 			</ScrollView>
 
-			<Portal>
-				<Dialog
-					visible={showDeleteDialog}
-					onDismiss={() => setShowDeleteDialog(false)}
-				>
-					<Dialog.Title>Delete ride?</Dialog.Title>
-					<Dialog.Content>
-						<Text variant="bodyMedium">
-							This will permanently delete this ride and all its track data.
-							This action cannot be undone.
-						</Text>
-					</Dialog.Content>
-					<Dialog.Actions>
-						<Button onPress={() => setShowDeleteDialog(false)}>Cancel</Button>
-						<Button
-							onPress={handleDelete}
-							loading={deleting}
-							textColor={colors.error}
-						>
-							Delete
-						</Button>
-					</Dialog.Actions>
-				</Dialog>
-			</Portal>
+			<DeleteRideDialog
+				visible={showDeleteDialog}
+				onDismiss={() => setShowDeleteDialog(false)}
+				onConfirm={handleDelete}
+				loading={deleting}
+			/>
 		</View>
 	);
 }
 
+const CARD_PAD = 16;
+const OUTER = 20;
+
 const styles = StyleSheet.create({
 	container: { flex: 1 },
 	centered: { justifyContent: "center", alignItems: "center" },
+
 	mapWrap: { height: "35%" },
-	mapScrim: {
-		position: "absolute",
-		top: 0,
-		left: 0,
-		right: 0,
-		backgroundColor: "rgba(0,0,0,0.25)",
+	body: { flex: 1 },
+
+	titleBlock: {
+		paddingHorizontal: OUTER + 4,
+		marginTop: 14,
+		marginBottom: 20,
+		gap: 4,
 	},
-	body: { flex: 1, paddingTop: 20 },
-	titleRow: {
+
+	heroRow: {
 		flexDirection: "row",
-		alignItems: "center",
-		paddingHorizontal: 12,
-		marginBottom: 16,
+		gap: 10,
+		paddingHorizontal: OUTER,
+		marginBottom: 20,
 	},
-	titleBtn: {
-		margin: 0,
-		width: 36,
-		height: 36,
-	},
-	noChart: {
-		marginHorizontal: 20,
+	heroCard: {
+		flex: 1,
 		borderRadius: 16,
-		padding: 32,
+		paddingVertical: 16,
+		alignItems: "center",
+		gap: 4,
+	},
+	heroNum: { fontWeight: "800" },
+
+	sectionLabel: { paddingHorizontal: OUTER + 4, marginBottom: 10 },
+	detailGrid: {
+		flexDirection: "row",
+		flexWrap: "wrap",
+		gap: 8,
+		paddingHorizontal: OUTER,
+		marginBottom: 20,
+	},
+	detailCard: {
+		flex: 1,
+		minWidth: "30%",
+		borderRadius: 14,
+		padding: 12,
+		alignItems: "center",
+		gap: 2,
+	},
+	detailVal: { fontWeight: "700" },
+
+	chartSection: { paddingHorizontal: OUTER, gap: 12, marginBottom: 8 },
+	chartCard: { borderRadius: 16, padding: CARD_PAD, overflow: "hidden" },
+	chartHeader: {
+		flexDirection: "row",
 		alignItems: "center",
 		gap: 8,
-		marginBottom: 12,
+		marginBottom: 4,
 	},
-	elevationCard: {
-		flexDirection: "row",
-		alignItems: "center",
-		marginHorizontal: 20,
-		marginTop: 12,
-		borderRadius: 14,
-		padding: 16,
-	},
-	elevationItem: {
-		flex: 1,
-		flexDirection: "row",
-		alignItems: "center",
-		gap: 10,
-	},
-	elevationDivider: { width: 1, height: 36, opacity: 0.3, marginHorizontal: 8 },
+
+	divider: { marginHorizontal: OUTER, marginTop: 12, marginBottom: 4 },
+	deleteBtn: { paddingVertical: 8 },
 });

@@ -143,9 +143,11 @@ export default function StatsScreen() {
 	}, [buckets, metric, granularity, colors.primary]);
 
 	const barCount = chartData.length || 1;
-	const chartW = screenW - 48 - 40 - 32;
-	const barSpacing = 6;
-	const barW = (chartW - barSpacing * (barCount + 1)) / barCount;
+	const chartW = screenW - 48 - 40 - 35;
+	const rawBarW = (chartW - 6 * (barCount + 2)) / barCount;
+	const barW = Math.min(rawBarW, 40);
+	const barSpacing =
+		rawBarW > 40 ? Math.max((chartW - barCount * 40) / (barCount + 2), 4) : 6;
 
 	const rawMax = Math.max(...chartData.map((d) => d.value), 0);
 	const maxBar = rawMax > 0 ? rawMax : 5;

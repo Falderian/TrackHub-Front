@@ -44,7 +44,7 @@ export default function RideTopBar({ ride }: Props) {
 					style={styles.btn}
 				/>
 				<IconButton
-					icon={autoCenter ? "crosshairs" : "crosshairs-gps"}
+					icon={autoCenter ? "crosshairs-gps" : "crosshairs"}
 					size={20}
 					iconColor={autoCenter ? colors.primary : colors.onSurfaceVariant}
 					onPress={handleCrosshairPress}

@@ -1,6 +1,8 @@
+import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useMemo, useRef } from "react";
-import { StyleSheet, View } from "react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Alert, StyleSheet, View } from "react-native";
+import { Button, Text, useTheme } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import RideMap, { type RideMapHandle } from "../components/RideMap";
 import RidePanel from "../components/RidePanel";
@@ -13,13 +15,24 @@ import { useRide } from "../hooks/useRide";
 import { requestPermissions } from "../services/location";
 
 function RecordLayout() {
+	const { colors } = useTheme();
 	const ride = useRide();
 	const insets = useSafeAreaInsets();
 	const { mapRef } = useRecordMapUI();
 	const { expanded } = useRecordLayoutUI();
+	const [permGranted, setPermGranted] = useState<boolean | null>(null);
 
 	useEffect(() => {
-		requestPermissions();
+		(async () => {
+			const ok = await requestPermissions();
+			setPermGranted(ok);
+			if (!ok) {
+				Alert.alert(
+					"Location access needed",
+					"TrackHub needs location access to track your rides. Please enable it in Settings.",
+				);
+			}
+		})();
 	}, []);
 
 	const { initialLat, initialLon } = useMemo(() => {
@@ -28,6 +41,33 @@ function RecordLayout() {
 		if (last) return { initialLat: last.latitude, initialLon: last.longitude };
 		return { initialLat: 53.9006, initialLon: 27.559 };
 	}, [ride.state.locations]);
+
+	if (permGranted === false) {
+		return (
+			<View
+				style={[
+					styles.container,
+					styles.centered,
+					{ backgroundColor: colors.background },
+				]}
+			>
+				<Text
+					variant="bodyLarge"
+					style={{
+						color: colors.onSurface,
+						textAlign: "center",
+						marginBottom: 16,
+						marginHorizontal: 32,
+					}}
+				>
+					Location access is required to record rides.
+				</Text>
+				<Button mode="contained" onPress={() => router.back()}>
+					Go Back
+				</Button>
+			</View>
+		);
+	}
 
 	return (
 		<View style={styles.container}>
@@ -66,6 +106,7 @@ export default function RideScreen() {
 
 const styles = StyleSheet.create({
 	container: { flex: 1 },
+	centered: { justifyContent: "center", alignItems: "center" },
 	mapFull: { ...StyleSheet.absoluteFillObject },
 	mapSmall: { flex: 1 },
 	statusBarScrim: {

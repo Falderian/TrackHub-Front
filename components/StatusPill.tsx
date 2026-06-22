@@ -6,8 +6,14 @@ interface Props {
 	ride: RideData;
 }
 
+type ThemeColors = ReturnType<typeof useTheme>["colors"] & {
+	warning: string;
+	warningContainer: string;
+	onWarningContainer: string;
+};
+
 export default function StatusPill({ ride }: Props) {
-	const { colors } = useTheme();
+	const { colors } = useTheme() as { colors: ThemeColors };
 
 	const bg = ride.isIdle
 		? colors.surfaceVariant
