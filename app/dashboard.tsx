@@ -1,5 +1,5 @@
 import { router, useFocusEffect } from "expo-router";
-import { Fragment, useCallback, useState } from "react";
+import { Fragment, useCallback, useMemo, useState } from "react";
 import {
 	ActivityIndicator,
 	Alert,
@@ -13,6 +13,7 @@ import {
 	Icon,
 	IconButton,
 	Portal,
+	Searchbar,
 	Text,
 	useTheme,
 } from "react-native-paper";
@@ -25,9 +26,10 @@ export default function DashboardScreen() {
 	const { colors } = useTheme();
 	const insets = useSafeAreaInsets();
 	const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
+	const [query, setQuery] = useState("");
 
 	const {
-		rides,
+		rides: allRides,
 		totalRides,
 		stats,
 		isLoading,
@@ -44,6 +46,12 @@ export default function DashboardScreen() {
 		}, [retry]),
 	);
 
+	const filtered = useMemo(() => {
+		if (!query.trim()) return allRides;
+		const q = query.toLowerCase();
+		return allRides.filter((r) => (r.title ?? "").toLowerCase().includes(q));
+	}, [allRides, query]);
+
 	const handleDelete = useCallback(async () => {
 		if (deleteTarget == null) return;
 		try {
@@ -59,7 +67,7 @@ export default function DashboardScreen() {
 	}, [deleteTarget, deleteRide]);
 
 	const totalHrs = ((stats?.totalMin ?? 0) / 60).toFixed(1);
-	const totalEle = rides.reduce((s, r) => s + (r.elevationGain ?? 0), 0);
+	const totalEle = allRides.reduce((s, r) => s + (r.elevationGain ?? 0), 0);
 
 	return (
 		<Fragment>
@@ -83,9 +91,22 @@ export default function DashboardScreen() {
 					</Text>
 				</View>
 
+				<View style={styles.searchRow}>
+					<Searchbar
+						placeholder="Search rides…"
+						value={query}
+						onChangeText={setQuery}
+						style={[styles.searchBar, { backgroundColor: colors.surface }]}
+						inputStyle={{ color: colors.onSurface }}
+						placeholderTextColor={colors.onSurfaceVariant}
+						iconColor={colors.onSurfaceVariant}
+						clearButtonMode="while-editing"
+					/>
+				</View>
+
 				{isError && <ErrorBanner message={errorMessage} onRetry={retry} />}
 
-				{!isLoading && rides.length > 0 && (
+				{!isLoading && allRides.length > 0 && (
 					<View style={styles.summary}>
 						<Stat label={`${totalRides} rides`} />
 						<Stat label={`${(stats?.totalKm ?? 0).toFixed(0)} km`} />
@@ -100,7 +121,7 @@ export default function DashboardScreen() {
 					</View>
 				) : (
 					<FlatList
-						data={rides}
+						data={filtered}
 						keyExtractor={(item) => String(item.id)}
 						renderItem={({ item }) => (
 							<RideRow ride={item} onDelete={() => setDeleteTarget(item.id)} />
@@ -119,7 +140,7 @@ export default function DashboardScreen() {
 									variant="bodyLarge"
 									style={{ color: colors.onSurfaceVariant, marginTop: 12 }}
 								>
-									No rides yet
+									{query ? "No matches" : "No rides yet"}
 								</Text>
 							</View>
 						}
@@ -169,6 +190,14 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		paddingHorizontal: 8,
 		paddingBottom: 4,
+	},
+	searchRow: {
+		paddingHorizontal: 16,
+		paddingBottom: 12,
+	},
+	searchBar: {
+		borderRadius: 12,
+		elevation: 0,
 	},
 	summary: {
 		flexDirection: "row",

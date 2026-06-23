@@ -38,6 +38,7 @@ export default function RootLayout() {
 							<Stack.Screen name="record" />
 							<Stack.Screen name="stats" />
 							<Stack.Screen name="ride/[id]" />
+							<Stack.Screen name="profile" />
 						</Stack>
 					</AuthProvider>
 				</QueryClientProvider>

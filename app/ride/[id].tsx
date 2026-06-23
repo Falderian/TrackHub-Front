@@ -1,3 +1,6 @@
+import * as FileSystem from "expo-file-system";
+import * as Sharing from "expo-sharing";
+import { useCallback, useState } from "react";
 import {
 	ActivityIndicator,
 	ScrollView,
@@ -9,6 +12,7 @@ import {
 	Button,
 	Divider,
 	Icon,
+	Snackbar,
 	Surface,
 	Text,
 	useTheme,
@@ -21,6 +25,7 @@ import RideDetailHeader from "../../components/RideDetailHeader";
 import RideMap from "../../components/RideMap";
 import SpeedChart from "../../components/SpeedChart";
 import useRideDetail from "../../hooks/useRideDetail";
+import { api } from "../../services/api";
 
 export default function RideDetailScreen() {
 	const { colors } = useTheme();
@@ -42,6 +47,36 @@ export default function RideDetailScreen() {
 		details,
 		hasCharts,
 	} = useRideDetail();
+
+	const [exporting, setExporting] = useState(false);
+	const [snackVisible, setSnackVisible] = useState(false);
+
+	const handleExportGpx = useCallback(async () => {
+		if (!ride) return;
+		setExporting(true);
+		try {
+			const gpx = await api.getRideGpx(ride.id);
+			const filename = `trackhub-ride-${ride.id}.gpx`;
+			const fileUri = `${FileSystem.cacheDirectory}${filename}`;
+			await FileSystem.writeAsStringAsync(fileUri, gpx, {
+				encoding: FileSystem.EncodingType.UTF8,
+			});
+			const canShare = await Sharing.isAvailableAsync();
+			if (canShare) {
+				await Sharing.shareAsync(fileUri, {
+					mimeType: "application/gpx+xml",
+					dialogTitle: "Export GPX",
+				});
+			} else {
+				setSnackVisible(true);
+			}
+		} catch (err) {
+			console.warn("[TrackHub] GPX export failed:", err);
+			setSnackVisible(true);
+		} finally {
+			setExporting(false);
+		}
+	}, [ride]);
 
 	if (rideError) {
 		return (
@@ -279,6 +314,17 @@ export default function RideDetailScreen() {
 				/>
 				<Button
 					mode="text"
+					icon="export-variant"
+					textColor={colors.primary}
+					contentStyle={styles.deleteBtn}
+					onPress={handleExportGpx}
+					loading={exporting}
+					disabled={exporting}
+				>
+					Export GPX
+				</Button>
+				<Button
+					mode="text"
 					icon="delete"
 					textColor={colors.error}
 					contentStyle={styles.deleteBtn}
@@ -295,6 +341,18 @@ export default function RideDetailScreen() {
 				onConfirm={handleDelete}
 				loading={deleting}
 			/>
+
+			<Snackbar
+				visible={snackVisible}
+				onDismiss={() => setSnackVisible(false)}
+				duration={3000}
+				action={{
+					label: "OK",
+					onPress: () => setSnackVisible(false),
+				}}
+			>
+				Sharing is not available on this device.
+			</Snackbar>
 		</View>
 	);
 }

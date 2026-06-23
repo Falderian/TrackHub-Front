@@ -61,6 +61,14 @@ export default function HomeHeader({
 					}
 				>
 					<Menu.Item
+						leadingIcon="account"
+						onPress={() => {
+							setMenuVisible(false);
+							router.push("/profile");
+						}}
+						title="Profile"
+					/>
+					<Menu.Item
 						leadingIcon="chart-bar"
 						onPress={() => {
 							setMenuVisible(false);

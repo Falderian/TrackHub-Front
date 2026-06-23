@@ -146,4 +146,26 @@ export const api = {
 			exportedAt: string;
 			rides: (Ride & { trackPoints: unknown[] })[];
 		}>("/rides/export"),
+
+	getRideGpx: async (id: number): Promise<string> => {
+		await tokensReady;
+		const base = (await getApiBase()).replace(/\/+$/, "");
+		const url = `${base}/rides/${id}/gpx`;
+		const accessToken = getAccessToken();
+		const headers: Record<string, string> = {};
+		if (accessToken) {
+			headers.Authorization = `Bearer ${accessToken}`;
+		}
+		let res = await fetch(url, { headers });
+		if (res.status === 401) {
+			const ok = await tryRefresh();
+			if (ok) {
+				const newToken = getAccessToken();
+				if (newToken) headers.Authorization = `Bearer ${newToken}`;
+				res = await fetch(url, { headers });
+			}
+		}
+		if (!res.ok) throw new Error("Failed to download GPX");
+		return res.text();
+	},
 };
