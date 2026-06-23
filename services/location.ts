@@ -1,8 +1,22 @@
 import * as Location from "expo-location";
 import * as TaskManager from "expo-task-manager";
 import { haversine } from "../helpers/ride";
+import { clearActiveRide, loadActiveRide, saveActiveRide } from "./storage";
 
 const TASK_NAME = "TRACKHUB_LOCATION";
+
+let lastPersist = 0;
+const PERSIST_INTERVAL_MS = 5_000;
+
+function persistIfNeeded() {
+	const now = Date.now();
+	if (now - lastPersist >= PERSIST_INTERVAL_MS) {
+		lastPersist = now;
+		saveActiveRide(state).catch((err) =>
+			console.warn("[TrackHub] persist failed:", err),
+		);
+	}
+}
 
 type Coords = {
 	latitude: number;
@@ -72,6 +86,36 @@ export function subscribe(fn: () => void): () => void {
 	};
 }
 
+const MAX_ACCURACY_M = 65;
+const MAX_SPEED_MS = 22;
+
+function passFilter(
+	loc: Location.LocationObject,
+	prev: Coords | undefined,
+): boolean {
+	const acc = loc.coords.accuracy;
+	if (acc != null && acc > MAX_ACCURACY_M) return false;
+
+	const chipSpeed = loc.coords.speed;
+	if (chipSpeed != null && chipSpeed > MAX_SPEED_MS) return false;
+
+	if (prev) {
+		const ts = loc.timestamp < 1e12 ? loc.timestamp * 1000 : loc.timestamp;
+		const dt = (ts - prev.timestamp) / 1000;
+		if (dt > 0.5) {
+			const dist = haversine(prev, {
+				latitude: loc.coords.latitude,
+				longitude: loc.coords.longitude,
+			});
+			if (dist / dt > MAX_SPEED_MS) return false;
+		}
+	}
+
+	return true;
+}
+
+let droppedCount = 0;
+
 TaskManager.defineTask(TASK_NAME, async ({ data, error }) => {
 	if (error) {
 		console.warn("[TrackHub] location task error:", error.message);
@@ -83,8 +127,10 @@ TaskManager.defineTask(TASK_NAME, async ({ data, error }) => {
 
 	for (const loc of locations) {
 		const prev = state.locations[state.locations.length - 1];
-		// expo-location may return seconds or ms depending on platform/version.
-		// Values below 1e12 (~2001 in ms) are Unix seconds; normalize to ms.
+		if (!passFilter(loc, prev)) {
+			droppedCount++;
+			continue;
+		}
 		const ts = loc.timestamp < 1e12 ? loc.timestamp * 1000 : loc.timestamp;
 		const alt = loc.coords.altitude ?? undefined;
 		const spd = loc.coords.speed ?? undefined;
@@ -109,6 +155,13 @@ TaskManager.defineTask(TASK_NAME, async ({ data, error }) => {
 		}
 		state.locations.push(coord);
 	}
+
+	if (droppedCount > 0) {
+		console.warn(`[TrackHub] dropped ${droppedCount} outlier(s) this batch`);
+		droppedCount = 0;
+	}
+
+	persistIfNeeded();
 	notify();
 });
 
@@ -119,6 +172,20 @@ export async function requestPermissions(): Promise<boolean> {
 	const bg = await Location.requestBackgroundPermissionsAsync();
 	return bg.granted;
 }
+
+const TRACKING_OPTIONS = {
+	accuracy: Location.Accuracy.BestForNavigation,
+	distanceInterval: 5,
+	timeInterval: 3000,
+	pausesLocationUpdatesAutomatically: false,
+	foregroundService: {
+		notificationTitle: "TrackHub",
+		notificationBody: "Tracking your ride…",
+		notificationColor: "#bf616a",
+	},
+	activityType: Location.ActivityType.Fitness,
+	showsBackgroundLocationIndicator: true,
+} satisfies Location.LocationOptions;
 
 export async function startTracking(): Promise<void> {
 	const ok = await requestPermissions();
@@ -139,17 +206,11 @@ export async function startTracking(): Promise<void> {
 		locations: [],
 	};
 
-	await Location.startLocationUpdatesAsync(TASK_NAME, {
-		accuracy: Location.Accuracy.BestForNavigation,
-		distanceInterval: 5,
-		foregroundService: {
-			notificationTitle: "TrackHub",
-			notificationBody: "Tracking your ride…",
-			notificationColor: "#bf616a",
-		},
-		activityType: Location.ActivityType.Fitness,
-		showsBackgroundLocationIndicator: true,
-	});
+	saveActiveRide(state).catch((err) =>
+		console.warn("[TrackHub] persist failed:", err),
+	);
+
+	await Location.startLocationUpdatesAsync(TASK_NAME, TRACKING_OPTIONS);
 }
 
 export async function pauseTracking(): Promise<void> {
@@ -171,17 +232,7 @@ export async function resumeTracking(): Promise<void> {
 	state.paused = false;
 	state.startedAt = Date.now();
 
-	await Location.startLocationUpdatesAsync(TASK_NAME, {
-		accuracy: Location.Accuracy.BestForNavigation,
-		distanceInterval: 5,
-		foregroundService: {
-			notificationTitle: "TrackHub",
-			notificationBody: "Tracking your ride…",
-			notificationColor: "#bf616a",
-		},
-		activityType: Location.ActivityType.Fitness,
-		showsBackgroundLocationIndicator: true,
-	});
+	await Location.startLocationUpdatesAsync(TASK_NAME, TRACKING_OPTIONS);
 	notify();
 }
 
@@ -211,6 +262,10 @@ export async function stopTracking(): Promise<RideSummary | null> {
 		})),
 	};
 
+	saveActiveRide(state).catch((err) =>
+		console.warn("[TrackHub] persist failed:", err),
+	);
+
 	state.running = false;
 	state.paused = false;
 	state.startedAt = null;
@@ -234,3 +289,29 @@ export function getElapsed(): number {
 	}
 	return current;
 }
+
+export async function restoreActiveRide(): Promise<RideState | null> {
+	const persisted = await loadActiveRide();
+	if (!persisted) return null;
+
+	const age = Date.now() - persisted.savedAt;
+	if (age > 86_400_000) {
+		await clearActiveRide();
+		return null;
+	}
+
+	state = { ...persisted.state };
+	notify();
+
+	if (state.running && !state.paused) {
+		try {
+			await Location.startLocationUpdatesAsync(TASK_NAME, TRACKING_OPTIONS);
+		} catch (err) {
+			console.warn("[TrackHub] failed to restart location updates:", err);
+		}
+	}
+
+	return state;
+}
+
+export { clearActiveRide as clearPersistedRide, loadActiveRide };

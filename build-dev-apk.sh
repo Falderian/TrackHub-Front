@@ -48,13 +48,21 @@ docker compose exec -T builder bash -c "
   fi
 "
 
-# The container path translates to:
+# Copy dev builds to dist with short timestamp
 if [ "$BUILD_TYPE" = "dev" ] || [ "$BUILD_TYPE" = "debug" ]; then
+  APK_OUTPUT_DIR="dist"
+  APK_SRC="android/app/build/outputs/apk/debug/app-debug.apk"
+  TIMESTAMP=$(date +%y%m%d-%H%M)
+  APK_DST="${APK_OUTPUT_DIR}/TrackHub-${TIMESTAMP}-debug.apk"
+  mkdir -p "$APK_OUTPUT_DIR"
+  cp "$APK_SRC" "$APK_DST"
   echo ""
-  echo "APK on host: android/app/build/outputs/apk/debug/app-debug.apk"
+  echo "=== Build successful ==="
+  echo "  APK:  $APK_DST"
+  echo "  Size: $(du -h "$APK_DST" | cut -f1)"
   echo ""
   echo "=== Next steps ==="
-  echo "  1. Install app-debug.apk on your phone"
+  echo "  1. Install $APK_DST on your phone"
   echo "  2. npx expo start --dev-client"
   echo "  3. Open the app and connect to the dev server URL"
 else

@@ -51,7 +51,7 @@ APK_SRC="android/app/build/outputs/apk/release/app-release.apk"
 
 if [ -f "$APK_SRC" ]; then
   mkdir -p "$APK_OUTPUT_DIR"
-  TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+  TIMESTAMP=$(date +%y%m%d-%H%M)
   APK_DST="${APK_OUTPUT_DIR}/TrackHub-${TIMESTAMP}-release.apk"
   cp "$APK_SRC" "$APK_DST"
 

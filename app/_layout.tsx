@@ -6,6 +6,7 @@ import { PaperProvider } from "react-native-paper";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { nordDark, nordLight } from "../constants/theme";
 import { AuthProvider } from "../contexts/auth";
+import { useRecovery } from "../hooks/useRecovery";
 import "../services/location";
 
 SplashScreen.preventAutoHideAsync();
@@ -22,6 +23,8 @@ const queryClient = new QueryClient({
 export default function RootLayout() {
 	const systemScheme = useColorScheme();
 	const theme = systemScheme === "dark" ? nordDark : nordLight;
+
+	useRecovery();
 
 	return (
 		<SafeAreaProvider>

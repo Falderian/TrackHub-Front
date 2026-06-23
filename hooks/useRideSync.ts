@@ -1,26 +1,85 @@
 import { useCallback, useEffect, useRef } from "react";
-import { Alert } from "react-native";
 import { roundTo } from "../helpers/ride";
 import { api } from "../services/api";
-import { getRideState, type RideSummary } from "../services/location";
+import {
+	clearPersistedRide,
+	getRideState,
+	type RideSummary,
+} from "../services/location";
+import * as storage from "../services/storage";
+
+async function persistMeta(
+	rideId: number | null,
+	lastSyncedIndex: number,
+	overrides?: Partial<
+		Pick<storage.SyncMeta, "isCompleted" | "completedAt" | "finalStats">
+	>,
+) {
+	const meta: storage.SyncMeta = {
+		rideId,
+		lastSyncedIndex,
+		isCompleted: false,
+		completedAt: null,
+		finalStats: null,
+		...overrides,
+	};
+	await storage
+		.saveSyncMeta(meta)
+		.catch((err) => console.warn("[TrackHub] persistMeta failed:", err));
+}
+
+async function tryCreateRide(
+	startTime: string,
+	trackPoints?: RideSummary["trackPoints"],
+) {
+	try {
+		const ride = await api.createRide({ startTime, trackPoints });
+		return (ride as { id: number }).id;
+	} catch (err) {
+		console.warn("[TrackHub] createRide failed:", err);
+		return null;
+	}
+}
 
 export function useRideSync(isActive: boolean) {
 	const rideIdRef = useRef<number | null>(null);
 	const lastFlushedRef = useRef(0);
 	const flushingRef = useRef(false);
 
+	useEffect(() => {
+		storage.loadSyncMeta().then((meta) => {
+			if (meta) {
+				rideIdRef.current = meta.rideId;
+				lastFlushedRef.current = meta.lastSyncedIndex;
+			}
+		});
+	}, []);
+
 	const flush = useCallback(async () => {
 		const id = rideIdRef.current;
-		if (!id || flushingRef.current) return;
+		if (flushingRef.current) return;
 
-		const locations = getRideState().locations;
-		const points = locations.slice(lastFlushedRef.current);
+		const state = getRideState();
+		const points = state.locations.slice(lastFlushedRef.current);
 		if (points.length === 0) return;
+
+		if (!id) {
+			const newId = await tryCreateRide(
+				new Date(state.rideStartTime ?? Date.now()).toISOString(),
+			);
+			if (newId) {
+				rideIdRef.current = newId;
+			} else {
+				await persistMeta(null, lastFlushedRef.current);
+				return;
+			}
+		}
 
 		flushingRef.current = true;
 		try {
+			if (!rideIdRef.current) return;
 			await api.addTrackPoints(
-				id,
+				rideIdRef.current,
 				points.map((p) => ({
 					latitude: p.latitude,
 					longitude: p.longitude,
@@ -30,8 +89,10 @@ export function useRideSync(isActive: boolean) {
 				})),
 			);
 			lastFlushedRef.current += points.length;
+			await persistMeta(rideIdRef.current, lastFlushedRef.current);
 		} catch (err) {
-			console.error("Failed to flush track points:", err);
+			console.warn("[TrackHub] flush failed:", err);
+			await persistMeta(rideIdRef.current, lastFlushedRef.current);
 		} finally {
 			flushingRef.current = false;
 		}
@@ -51,16 +112,13 @@ export function useRideSync(isActive: boolean) {
 		const state = getRideState();
 		if (!state.rideStartTime) return;
 
-		try {
-			const ride = await api.createRide({
-				startTime: new Date(state.rideStartTime).toISOString(),
-			});
-			rideIdRef.current = (ride as { id: number }).id;
-		} catch (err) {
-			console.error("Failed to create ride on backend:", err);
-			Alert.alert(
-				"Sync error",
-				"Failed to start recording on server. Track points will not be saved.",
+		const id = await tryCreateRide(new Date(state.rideStartTime).toISOString());
+		rideIdRef.current = id;
+		await persistMeta(id, 0);
+
+		if (!id) {
+			console.warn(
+				"[TrackHub] beginRide: backend unreachable — ride will sync when connection restores.",
 			);
 		}
 	}, []);
@@ -69,19 +127,21 @@ export function useRideSync(isActive: boolean) {
 		async (summary: RideSummary): Promise<number | null> => {
 			await flush();
 
-			const id = rideIdRef.current;
-			rideIdRef.current = null;
-			lastFlushedRef.current = 0;
+			let id = rideIdRef.current;
 
-			if (!summary.trackPoints.length) return null;
+			if (!summary.trackPoints.length) {
+				rideIdRef.current = null;
+				lastFlushedRef.current = 0;
+				await clearPersistedRide().catch(() => {});
+				await storage.clearSyncMeta().catch(() => {});
+				return null;
+			}
 
 			const lastPoint = summary.trackPoints[summary.trackPoints.length - 1];
 			const distanceKm = summary.distance / 1000;
 			const durationHours = summary.totalElapsed / 3600;
 			const avgSpeed = durationHours > 0 ? distanceKm / durationHours : 0;
 
-			// Use GPS chip Doppler speed (m/s → km/h) — far more accurate
-			// than computing from position deltas which are dominated by noise.
 			let maxSpeed = 0;
 			for (const p of summary.trackPoints) {
 				if (p.speed != null && p.speed > 0) {
@@ -90,39 +150,52 @@ export function useRideSync(isActive: boolean) {
 				}
 			}
 
+			const finalStats = {
+				distance: roundTo(distanceKm, 2),
+				avgSpeed: roundTo(avgSpeed, 2),
+				maxSpeed: roundTo(maxSpeed, 2),
+				elevationGain: roundTo(summary.elevationGain, 2),
+				elevationLoss: roundTo(summary.elevationLoss, 2),
+			};
+
+			await persistMeta(id, lastFlushedRef.current, {
+				isCompleted: true,
+				completedAt: lastPoint.timestamp,
+				finalStats,
+			});
+
+			if (!id) {
+				try {
+					const ride = await api.createRide({
+						startTime: summary.startTime,
+						trackPoints: summary.trackPoints,
+					});
+					id = (ride as { id: number }).id;
+				} catch (err) {
+					console.warn("[TrackHub] completeRide create failed:", err);
+				}
+			}
+
 			if (id) {
 				try {
 					await api.updateRide(id, {
 						endTime: lastPoint.timestamp,
-						distance: roundTo(distanceKm, 2),
-						avgSpeed: roundTo(avgSpeed, 2),
-						maxSpeed: roundTo(maxSpeed, 2),
+						distance: finalStats.distance,
+						avgSpeed: finalStats.avgSpeed,
+						maxSpeed: finalStats.maxSpeed,
+						elevationGain: finalStats.elevationGain,
+						elevationLoss: finalStats.elevationLoss,
 					});
-					return id;
+					await clearPersistedRide().catch(() => {});
+					await storage.clearSyncMeta().catch(() => {});
 				} catch (err) {
-					console.error("Failed to finalize ride:", err);
-					Alert.alert(
-						"Sync error",
-						"Failed to save final ride stats. Your ride data may be incomplete.",
-					);
-					return id;
+					console.warn("[TrackHub] completeRide finalize failed:", err);
 				}
 			}
 
-			try {
-				const ride = await api.createRide({
-					startTime: summary.startTime,
-					trackPoints: summary.trackPoints,
-				});
-				return (ride as { id: number }).id;
-			} catch (err) {
-				console.error("Failed to save ride:", err);
-				Alert.alert(
-					"Save failed",
-					"Could not save your ride. Please try again.",
-				);
-			}
-			return null;
+			rideIdRef.current = null;
+			lastFlushedRef.current = 0;
+			return id;
 		},
 		[flush],
 	);
