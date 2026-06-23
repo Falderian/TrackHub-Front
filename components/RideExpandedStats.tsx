@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { StyleSheet, View } from "react-native";
 import { Text, useTheme } from "react-native-paper";
 import { computeRideMetrics } from "../helpers/ride";
-import { useIsStationary } from "../hooks/useIsStationary";
 import type { RideData } from "../hooks/useRide";
 
 interface Props {
@@ -12,8 +11,6 @@ interface Props {
 export default function RideExpandedStats({ ride }: Props) {
 	const { colors } = useTheme();
 
-	const stationary = useIsStationary();
-
 	const { currentSpeed, maxSpeed, paceMinPerKm } = useMemo(
 		() =>
 			computeRideMetrics(
@@ -21,9 +18,8 @@ export default function RideExpandedStats({ ride }: Props) {
 				ride.state.distance,
 				ride.elapsed,
 				"metric",
-				stationary,
 			),
-		[ride.state.locations, ride.state.distance, ride.elapsed, stationary],
+		[ride.state.locations, ride.state.distance, ride.elapsed],
 	);
 
 	const eleGain = ride.state.elevationGain;

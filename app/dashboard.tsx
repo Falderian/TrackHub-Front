@@ -12,61 +12,48 @@ import {
 } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import RideRow from "../components/RideRow";
-import { api } from "../services/api";
-import type { Ride, RideStats } from "../types";
+import {
+	useDeleteRideMutation,
+	useRideStatsQuery,
+	useRidesQuery,
+} from "../hooks/queries";
 
 export default function DashboardScreen() {
 	const { colors } = useTheme();
 	const insets = useSafeAreaInsets();
-	const [rides, setRides] = useState<Ride[]>([]);
-	const [totalRides, setTotalRides] = useState(0);
-	const [stats, setStats] = useState<RideStats>({
-		totalRides: 0,
-		totalKm: 0,
-		totalMin: 0,
-	});
-	const [loading, setLoading] = useState(true);
-	const [refreshing, setRefreshing] = useState(false);
-	const [deleteTarget, setDeleteTarget] = useState<Ride | null>(null);
-	const [deleting, setDeleting] = useState(false);
+	const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
 
-	const fetchData = useCallback(async () => {
-		const [ridesRes, statsRes] = await Promise.all([
-			api.getRides({ pageSize: 100 }),
-			api.getRideStats().catch(() => null),
-		]);
-		setRides(ridesRes.data);
-		setTotalRides(ridesRes.meta.total);
-		if (statsRes) setStats(statsRes);
-	}, []);
+	const {
+		data: ridesRes,
+		isLoading,
+		refetch,
+		isRefetching,
+	} = useRidesQuery({ pageSize: 100 });
+	const { data: stats } = useRideStatsQuery();
+	const deleteRide = useDeleteRideMutation();
 
+	const rides = ridesRes?.data ?? [];
+	const totalRides = ridesRes?.meta.total ?? 0;
+
+	// Re-fetch on focus (e.g. returning from ride detail after delete)
 	useFocusEffect(
 		useCallback(() => {
-			fetchData().finally(() => setLoading(false));
-		}, [fetchData]),
+			refetch();
+		}, [refetch]),
 	);
 
-	const onRefresh = useCallback(async () => {
-		setRefreshing(true);
-		await fetchData();
-		setRefreshing(false);
-	}, [fetchData]);
-
 	const handleDelete = useCallback(async () => {
-		if (!deleteTarget) return;
-		setDeleting(true);
+		if (deleteTarget == null) return;
 		try {
-			await api.deleteRide(deleteTarget.id);
-			setRides((prev) => prev.filter((r) => r.id !== deleteTarget.id));
-			setTotalRides((prev) => prev - 1);
+			await deleteRide.mutateAsync(deleteTarget);
 		} catch {
+			// error state is available via deleteRide.error if needed
 		} finally {
-			setDeleting(false);
 			setDeleteTarget(null);
 		}
-	}, [deleteTarget]);
+	}, [deleteTarget, deleteRide]);
 
-	const totalHrs = (stats.totalMin / 60).toFixed(1);
+	const totalHrs = ((stats?.totalMin ?? 0) / 60).toFixed(1);
 	const totalEle = rides.reduce((s, r) => s + (r.elevationGain ?? 0), 0);
 
 	return (
@@ -91,16 +78,16 @@ export default function DashboardScreen() {
 					</Text>
 				</View>
 
-				{!loading && rides.length > 0 && (
+				{!isLoading && rides.length > 0 && (
 					<View style={styles.summary}>
 						<Stat label={`${totalRides} rides`} />
-						<Stat label={`${stats.totalKm.toFixed(0)} km`} />
+						<Stat label={`${(stats?.totalKm ?? 0).toFixed(0)} km`} />
 						<Stat label={`${totalHrs}h`} />
 						{totalEle > 0 && <Stat label={`+${totalEle}m`} />}
 					</View>
 				)}
 
-				{loading ? (
+				{isLoading ? (
 					<View style={styles.loading}>
 						<ActivityIndicator size="large" color={colors.primary} />
 					</View>
@@ -109,14 +96,14 @@ export default function DashboardScreen() {
 						data={rides}
 						keyExtractor={(item) => String(item.id)}
 						renderItem={({ item }) => (
-							<RideRow ride={item} onDelete={() => setDeleteTarget(item)} />
+							<RideRow ride={item} onDelete={() => setDeleteTarget(item.id)} />
 						)}
 						contentContainerStyle={[
 							styles.list,
 							{ paddingBottom: insets.bottom + 16 },
 						]}
-						refreshing={refreshing}
-						onRefresh={onRefresh}
+						refreshing={isRefetching}
+						onRefresh={refetch}
 						showsVerticalScrollIndicator={false}
 						ListEmptyComponent={
 							<View style={styles.empty}>
@@ -140,15 +127,14 @@ export default function DashboardScreen() {
 					<Dialog.Title>Delete ride?</Dialog.Title>
 					<Dialog.Content>
 						<Text variant="bodyMedium">
-							Permanently delete "{deleteTarget?.title ?? "this ride"}" and all
-							its track data?
+							Permanently delete this ride and all its track data?
 						</Text>
 					</Dialog.Content>
 					<Dialog.Actions>
 						<Button onPress={() => setDeleteTarget(null)}>Cancel</Button>
 						<Button
 							onPress={handleDelete}
-							loading={deleting}
+							loading={deleteRide.isPending}
 							textColor={colors.error}
 						>
 							Delete

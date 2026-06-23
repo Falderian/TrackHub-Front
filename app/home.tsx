@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import {
 	ActivityIndicator,
 	StyleSheet,
@@ -12,38 +12,25 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import EmptyRides from "../components/EmptyRides";
 import HomeHeader from "../components/HomeHeader";
 import RideCard from "../components/RideCard";
-import { api } from "../services/api";
-import type { Ride, RideStats } from "../types";
+import { useRideStatsQuery, useRidesQuery } from "../hooks/queries";
 
 export default function HomeScreen() {
 	const { colors } = useTheme();
 	const scheme = useColorScheme();
 	const insets = useSafeAreaInsets();
 
-	const [rides, setRides] = useState<Ride[]>([]);
-	const [totalRides, setTotalRides] = useState(0);
-	const [stats, setStats] = useState<RideStats>({
-		totalRides: 0,
-		totalKm: 0,
-		totalMin: 0,
-	});
-	const [loading, setLoading] = useState(true);
+	const { data: ridesRes, isLoading, refetch } = useRidesQuery({ pageSize: 5 });
+	const { data: stats, refetch: refetchStats } = useRideStatsQuery();
 
+	const rides = ridesRes?.data ?? [];
+	const totalRides = ridesRes?.meta.total ?? 0;
+
+	// Re-fetch when the screen gains focus (e.g. returning from record)
 	useFocusEffect(
 		useCallback(() => {
-			(async () => {
-				try {
-					const res = await api.getRides({ pageSize: 5 });
-					setRides(res.data);
-					setTotalRides(res.meta.total);
-				} catch {}
-				try {
-					const s = await api.getRideStats();
-					setStats(s);
-				} catch {}
-				setLoading(false);
-			})();
-		}, []),
+			refetch();
+			refetchStats();
+		}, [refetch, refetchStats]),
 	);
 
 	return (
@@ -55,8 +42,8 @@ export default function HomeScreen() {
 
 			<HomeHeader
 				totalRides={totalRides}
-				totalKm={stats.totalKm.toFixed(1)}
-				totalHrs={(stats.totalMin / 60).toFixed(1)}
+				totalKm={(stats?.totalKm ?? 0).toFixed(1)}
+				totalHrs={((stats?.totalMin ?? 0) / 60).toFixed(1)}
 			/>
 
 			<View style={styles.sectionHeader}>
@@ -79,7 +66,7 @@ export default function HomeScreen() {
 				)}
 			</View>
 
-			{loading ? (
+			{isLoading ? (
 				<View style={styles.loading}>
 					<ActivityIndicator size="large" color={colors.primary} />
 				</View>

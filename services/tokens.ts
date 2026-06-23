@@ -8,6 +8,11 @@ let accessToken: string | null = null;
 let refreshToken: string | null = null;
 let refreshing: Promise<boolean> | null = null;
 
+let resolveReady: () => void;
+export const tokensReady = new Promise<void>((resolve) => {
+	resolveReady = resolve;
+});
+
 export async function setTokens(access: string, refresh: string) {
 	accessToken = access;
 	refreshToken = refresh;
@@ -47,10 +52,13 @@ export async function restoreTokens(): Promise<boolean> {
 		if (access && refresh) {
 			accessToken = access;
 			refreshToken = refresh;
+			resolveReady();
 			return true;
 		}
+		resolveReady();
 		return false;
 	} catch {
+		resolveReady();
 		return false;
 	}
 }

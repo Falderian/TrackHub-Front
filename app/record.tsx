@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Alert, StyleSheet, View } from "react-native";
 import { Button, Text, useTheme } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -35,12 +35,14 @@ function RecordLayout() {
 		})();
 	}, []);
 
-	const { initialLat, initialLon } = useMemo(() => {
-		const locs = ride.state.locations;
-		const last = locs[locs.length - 1];
-		if (last) return { initialLat: last.latitude, initialLon: last.longitude };
-		return { initialLat: 53.9006, initialLon: 27.559 };
-	}, [ride.state.locations]);
+	const initialCoords = useRef({ lat: 53.9006, lon: 27.559 });
+	// biome-ignore lint/correctness/useExhaustiveDependencies: capture initial location once on mount
+	useEffect(() => {
+		const last = ride.state.locations.at(-1);
+		if (last) {
+			initialCoords.current = { lat: last.latitude, lon: last.longitude };
+		}
+	}, []);
 
 	if (permGranted === false) {
 		return (
@@ -76,8 +78,8 @@ function RecordLayout() {
 			<View style={expanded ? styles.mapSmall : styles.mapFull}>
 				<RideMap
 					ref={mapRef}
-					initialLat={initialLat}
-					initialLon={initialLon}
+					initialLat={initialCoords.current.lat}
+					initialLon={initialCoords.current.lon}
 					locations={ride.state.locations}
 				/>
 			</View>

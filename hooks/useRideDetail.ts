@@ -1,8 +1,8 @@
-import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { fmtPace, fmtTime } from "../helpers/ride";
-import { api } from "../services/api";
 import type { ChartArrays } from "../types";
+import { useDeleteRideMutation, useRideQuery } from "./queries";
 
 export interface RideDetailData {
 	id: number;
@@ -32,64 +32,59 @@ export interface DetailStat {
 
 export default function useRideDetail() {
 	const { id } = useLocalSearchParams<{ id: string }>();
-	const [ride, setRide] = useState<RideDetailData | null>(null);
-	const [loading, setLoading] = useState(true);
-	const [deleting, setDeleting] = useState(false);
+	const numId = Number(id);
+
+	const { data: ride, isLoading: loading } = useRideQuery(numId);
+	const deleteRide = useDeleteRideMutation();
+
 	const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-	useFocusEffect(
-		useCallback(() => {
-			(async () => {
-				try {
-					const data = await api.getRide(Number(id));
-					setRide(data as unknown as RideDetailData);
-				} catch {}
-				setLoading(false);
-			})();
-		}, [id]),
-	);
-
 	const handleDelete = useCallback(async () => {
-		setDeleting(true);
 		try {
-			await api.deleteRide(Number(id));
+			await deleteRide.mutateAsync(numId);
 		} catch {
+			// error available via deleteRide.error
 		} finally {
 			setShowDeleteDialog(false);
-			setDeleting(false);
 			router.back();
 		}
-	}, [id]);
+	}, [numId, deleteRide]);
+
+	const typedRide = ride as RideDetailData | undefined;
 
 	const durSec = useMemo(() => {
-		if (!ride?.startTime || !ride?.endTime) return null;
+		if (!typedRide?.startTime || !typedRide?.endTime) return null;
 		return Math.round(
-			(new Date(ride.endTime).getTime() - new Date(ride.startTime).getTime()) /
+			(new Date(typedRide.endTime).getTime() -
+				new Date(typedRide.startTime).getTime()) /
 				1000,
 		);
-	}, [ride?.startTime, ride?.endTime]);
+	}, [typedRide?.startTime, typedRide?.endTime]);
 
 	const dateLabel = useMemo(() => {
-		if (!ride?.startTime) return null;
-		return new Date(ride.startTime).toLocaleDateString(undefined, {
+		if (!typedRide?.startTime) return null;
+		return new Date(typedRide.startTime).toLocaleDateString(undefined, {
 			weekday: "long",
 			month: "long",
 			day: "numeric",
 			year: "numeric",
 		});
-	}, [ride?.startTime]);
+	}, [typedRide?.startTime]);
 
 	const timeRange = useMemo(() => {
-		if (!ride?.startTime) return null;
+		if (!typedRide?.startTime) return null;
 		const opts: Intl.DateTimeFormatOptions = {
 			hour: "2-digit",
 			minute: "2-digit",
 		};
-		const start = new Date(ride.startTime).toLocaleTimeString(undefined, opts);
-		if (!ride.endTime) return start;
-		const end = new Date(ride.endTime).toLocaleTimeString(undefined, opts);
+		const start = new Date(typedRide.startTime).toLocaleTimeString(
+			undefined,
+			opts,
+		);
+		if (!typedRide.endTime) return start;
+		const end = new Date(typedRide.endTime).toLocaleTimeString(undefined, opts);
 		return `${start} – ${end}`;
-	}, [ride?.startTime, ride?.endTime]);
+	}, [typedRide?.startTime, typedRide?.endTime]);
 
 	const durLabel = useMemo(
 		() => (durSec != null ? fmtTime(durSec) : null),
@@ -97,11 +92,11 @@ export default function useRideDetail() {
 	);
 
 	const mid =
-		ride?.trackPoints && ride.trackPoints.length > 0
-			? ride.trackPoints[Math.floor(ride.trackPoints.length / 2)]
+		typedRide?.trackPoints && typedRide.trackPoints.length > 0
+			? typedRide.trackPoints[Math.floor(typedRide.trackPoints.length / 2)]
 			: null;
 
-	const pointCount = ride?.trackPoints?.length ?? 0;
+	const pointCount = typedRide?.trackPoints?.length ?? 0;
 
 	const details: DetailStat[] = useMemo(() => {
 		const items: DetailStat[] = [
@@ -109,25 +104,32 @@ export default function useRideDetail() {
 				icon: "speedometer",
 				label: "Avg speed",
 				value:
-					ride?.avgSpeed != null ? `${ride.avgSpeed.toFixed(1)} km/h` : "—",
+					typedRide?.avgSpeed != null
+						? `${typedRide.avgSpeed.toFixed(1)} km/h`
+						: "—",
 			},
 			{
 				icon: "speedometer",
 				label: "Max speed",
 				value:
-					ride?.maxSpeed != null ? `${ride.maxSpeed.toFixed(1)} km/h` : "—",
+					typedRide?.maxSpeed != null
+						? `${typedRide.maxSpeed.toFixed(1)} km/h`
+						: "—",
 			},
 			{
 				icon: "timer-outline",
 				label: "Pace",
-				value: ride?.avgSpeed != null ? `${fmtPace(ride.avgSpeed)} /km` : "—",
+				value:
+					typedRide?.avgSpeed != null
+						? `${fmtPace(typedRide.avgSpeed)} /km`
+						: "—",
 			},
 		];
-		if ((ride?.elevationLoss ?? 0) > 0) {
+		if ((typedRide?.elevationLoss ?? 0) > 0) {
 			items.push({
 				icon: "arrow-down-bold",
 				label: "Descent",
-				value: `−${Math.round(ride!.elevationLoss)} m`,
+				value: `−${Math.round(typedRide?.elevationLoss ?? 0)} m`,
 			});
 		}
 		items.push({
@@ -136,14 +138,14 @@ export default function useRideDetail() {
 			value: String(pointCount),
 		});
 		return items;
-	}, [ride, pointCount]);
+	}, [typedRide, pointCount]);
 
-	const hasCharts = ride?.chart !== null;
+	const hasCharts = typedRide?.chart !== null;
 
 	return {
-		ride,
+		ride: typedRide ?? null,
 		loading,
-		deleting,
+		deleting: deleteRide.isPending,
 		showDeleteDialog,
 		setShowDeleteDialog,
 		handleDelete,

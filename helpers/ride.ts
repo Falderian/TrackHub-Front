@@ -115,8 +115,7 @@ export const computeRideMetrics = (
 	distance: number,
 	elapsed: number,
 	unit: UnitSystem = "metric",
-	stationary = false,
-): RideMetrics => { 
+): RideMetrics => {
 	let maxSpeed = 0;
 
 	for (const loc of locations) {
@@ -127,12 +126,10 @@ export const computeRideMetrics = (
 	}
  
 	let currentSpeed = "0.0";
-	if (!stationary) {
-		for (let i = locations.length - 1; i >= 0; i--) {
-			if (locations[i].speed != null) {
-				currentSpeed = (locations[i].speed! * 3.6).toFixed(1);
-				break;
-			}
+	for (let i = locations.length - 1; i >= 0; i--) {
+		if (locations[i].speed != null) {
+			currentSpeed = (locations[i].speed! * 3.6).toFixed(1);
+			break;
 		}
 	}
 

@@ -1,11 +1,13 @@
 import type { PaginatedResponse, Ride, RideStats } from "../types";
 import { getApiBase } from "./config";
-import { getAccessToken, tryRefresh } from "./tokens";
+import { getAccessToken, tokensReady, tryRefresh } from "./tokens";
 
 async function request<T = unknown>(
 	path: string,
 	options: RequestInit = {},
 ): Promise<T> {
+	await tokensReady;
+
 	const base = (await getApiBase()).replace(/\/+$/, "");
 	const url = `${base}${path}`;
 
