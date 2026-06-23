@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
+import { Alert } from "react-native";
 import { roundTo } from "../helpers/ride";
 import { api } from "../services/api";
 import { getRideState, type RideSummary } from "../services/location";
@@ -57,6 +58,10 @@ export function useRideSync(isActive: boolean) {
 			rideIdRef.current = (ride as { id: number }).id;
 		} catch (err) {
 			console.error("Failed to create ride on backend:", err);
+			Alert.alert(
+				"Sync error",
+				"Failed to start recording on server. Track points will not be saved.",
+			);
 		}
 	}, []);
 
@@ -96,6 +101,10 @@ export function useRideSync(isActive: boolean) {
 					return id;
 				} catch (err) {
 					console.error("Failed to finalize ride:", err);
+					Alert.alert(
+						"Sync error",
+						"Failed to save final ride stats. Your ride data may be incomplete.",
+					);
 					return id;
 				}
 			}
@@ -108,6 +117,10 @@ export function useRideSync(isActive: boolean) {
 				return (ride as { id: number }).id;
 			} catch (err) {
 				console.error("Failed to save ride:", err);
+				Alert.alert(
+					"Save failed",
+					"Could not save your ride. Please try again.",
+				);
 			}
 			return null;
 		},

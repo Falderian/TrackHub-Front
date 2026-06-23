@@ -16,6 +16,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import DeleteRideDialog from "../../components/DeleteRideDialog";
 import ElevationProfile from "../../components/ElevationProfile";
+import ErrorBanner from "../../components/ErrorBanner";
 import RideDetailHeader from "../../components/RideDetailHeader";
 import RideMap from "../../components/RideMap";
 import SpeedChart from "../../components/SpeedChart";
@@ -28,6 +29,8 @@ export default function RideDetailScreen() {
 	const {
 		ride,
 		loading,
+		rideError,
+		refetch,
 		deleting,
 		showDeleteDialog,
 		setShowDeleteDialog,
@@ -39,6 +42,20 @@ export default function RideDetailScreen() {
 		details,
 		hasCharts,
 	} = useRideDetail();
+
+	if (rideError) {
+		return (
+			<View
+				style={[
+					styles.container,
+					styles.centered,
+					{ backgroundColor: colors.background },
+				]}
+			>
+				<ErrorBanner message={rideError} onRetry={refetch} />
+			</View>
+		);
+	}
 
 	if (loading || !ride) {
 		return (

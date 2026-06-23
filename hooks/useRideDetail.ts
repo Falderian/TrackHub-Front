@@ -1,5 +1,6 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
+import { Alert } from "react-native";
 import { fmtPace, fmtTime } from "../helpers/ride";
 import type { ChartArrays } from "../types";
 import { useDeleteRideMutation, useRideQuery } from "./queries";
@@ -34,7 +35,13 @@ export default function useRideDetail() {
 	const { id } = useLocalSearchParams<{ id: string }>();
 	const numId = Number(id);
 
-	const { data: ride, isLoading: loading } = useRideQuery(numId);
+	const {
+		data: ride,
+		isLoading: loading,
+		isError,
+		error: queryError,
+		refetch,
+	} = useRideQuery(numId);
 	const deleteRide = useDeleteRideMutation();
 
 	const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -42,13 +49,22 @@ export default function useRideDetail() {
 	const handleDelete = useCallback(async () => {
 		try {
 			await deleteRide.mutateAsync(numId);
-		} catch {
-			// error available via deleteRide.error
-		} finally {
 			setShowDeleteDialog(false);
 			router.back();
+		} catch (e: unknown) {
+			setShowDeleteDialog(false);
+			Alert.alert(
+				"Delete failed",
+				e instanceof Error ? e.message : "Something went wrong",
+			);
 		}
 	}, [numId, deleteRide]);
+
+	const rideError = isError
+		? queryError instanceof Error
+			? queryError.message
+			: "Unable to load ride"
+		: null;
 
 	const typedRide = ride as RideDetailData | undefined;
 
@@ -145,6 +161,8 @@ export default function useRideDetail() {
 	return {
 		ride: typedRide ?? null,
 		loading,
+		rideError,
+		refetch,
 		deleting: deleteRide.isPending,
 		showDeleteDialog,
 		setShowDeleteDialog,

@@ -9,27 +9,23 @@ import {
 	useTheme,
 } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import ErrorBanner from "../components/ErrorBanner";
 import StatsChart from "../components/StatsChart";
 import StatsSummary from "../components/StatsSummary";
 import { computeRange, type Range } from "../helpers/stats";
-import { useRideStatsQuery, useStatsBucketsQuery } from "../hooks/queries";
+import { useStatsData } from "../hooks/queries";
 
 export default function StatsScreen() {
 	const { colors } = useTheme();
 	const insets = useSafeAreaInsets();
-
 	const [range, setRange] = useState<Range>("weekly");
 
 	const granularity =
 		range === "annual" ? "month" : range === "monthly" ? "week" : "day";
 	const dates = useMemo(() => computeRange(range), [range]);
 
-	const { data: stats, isLoading } = useRideStatsQuery(dates.from, dates.to);
-	const { data: buckets = [] } = useStatsBucketsQuery(
-		dates.from,
-		dates.to,
-		granularity,
-	);
+	const { stats, buckets, isLoading, isError, errorMessage, retry } =
+		useStatsData(dates.from, dates.to, granularity);
 
 	return (
 		<View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -48,7 +44,6 @@ export default function StatsScreen() {
 				</Text>
 				<View style={{ width: 48 }} />
 			</View>
-
 			<ScrollView
 				contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
 				showsVerticalScrollIndicator={false}
@@ -63,7 +58,7 @@ export default function StatsScreen() {
 					]}
 					style={styles.segment}
 				/>
-
+				{isError && <ErrorBanner message={errorMessage} onRetry={retry} />}
 				{isLoading ? (
 					<ActivityIndicator
 						size="large"
@@ -73,7 +68,6 @@ export default function StatsScreen() {
 				) : (
 					<>
 						{stats && <StatsSummary stats={stats} />}
-
 						{buckets.length > 0 ? (
 							<StatsChart range={range} buckets={buckets} />
 						) : (

@@ -57,7 +57,68 @@ export function useRideQuery(id: number) {
 	});
 }
 
-// ── Mutations ────────────────────────────────────────────────────
+interface QueryLike {
+	isError: boolean;
+	error: Error | null;
+	refetch: () => unknown;
+}
+
+function mergeErrors(fallback: string, queries: QueryLike[]) {
+	const isError = queries.some((q) => q.isError);
+	if (!isError) {
+		return { isError: false as const, errorMessage: "", retry: () => {} };
+	}
+	const firstErr = queries.find((q) => q.isError)?.error ?? null;
+	return {
+		isError: true as const,
+		errorMessage: firstErr instanceof Error ? firstErr.message : fallback,
+		retry: () => {
+			for (const q of queries) q.refetch();
+		},
+	};
+}
+
+export function useRidesOverview(pageSize = 100) {
+	const rides = useRidesQuery({ pageSize });
+	const stats = useRideStatsQuery();
+	const { isError, errorMessage, retry } = mergeErrors("Unable to load data", [
+		rides,
+		stats,
+	]);
+
+	return {
+		rides: rides.data?.data ?? [],
+		totalRides: rides.data?.meta.total ?? 0,
+		stats: stats.data ?? null,
+		isLoading: rides.isLoading,
+		isRefetching: rides.isRefetching,
+		isError,
+		errorMessage,
+		retry,
+	};
+}
+
+export function useStatsData(
+	from: string,
+	to: string,
+	granularity: "day" | "week" | "month",
+) {
+	const stats = useRideStatsQuery(from, to);
+	const buckets = useStatsBucketsQuery(from, to, granularity);
+	const { isError, errorMessage, retry } = mergeErrors("Unable to load stats", [
+		stats,
+		buckets,
+	]);
+
+	return {
+		stats: stats.data ?? null,
+		buckets: buckets.data ?? [],
+		isLoading: stats.isLoading,
+		isError,
+		errorMessage,
+		retry,
+	};
+}
 
 export function useDeleteRideMutation() {
 	const queryClient = useQueryClient();

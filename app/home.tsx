@@ -10,27 +10,23 @@ import {
 import { Button, Text, useTheme } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import EmptyRides from "../components/EmptyRides";
+import ErrorBanner from "../components/ErrorBanner";
 import HomeHeader from "../components/HomeHeader";
 import RideCard from "../components/RideCard";
-import { useRideStatsQuery, useRidesQuery } from "../hooks/queries";
+import { useRidesOverview } from "../hooks/queries";
 
 export default function HomeScreen() {
 	const { colors } = useTheme();
 	const scheme = useColorScheme();
 	const insets = useSafeAreaInsets();
 
-	const { data: ridesRes, isLoading, refetch } = useRidesQuery({ pageSize: 5 });
-	const { data: stats, refetch: refetchStats } = useRideStatsQuery();
+	const { rides, totalRides, stats, isLoading, isError, errorMessage, retry } =
+		useRidesOverview(5);
 
-	const rides = ridesRes?.data ?? [];
-	const totalRides = ridesRes?.meta.total ?? 0;
-
-	// Re-fetch when the screen gains focus (e.g. returning from record)
 	useFocusEffect(
 		useCallback(() => {
-			refetch();
-			refetchStats();
-		}, [refetch, refetchStats]),
+			retry();
+		}, [retry]),
 	);
 
 	return (
@@ -39,13 +35,12 @@ export default function HomeScreen() {
 				style={scheme === "dark" ? "light" : "dark"}
 				backgroundColor={colors.background}
 			/>
-
 			<HomeHeader
 				totalRides={totalRides}
 				totalKm={(stats?.totalKm ?? 0).toFixed(1)}
 				totalHrs={((stats?.totalMin ?? 0) / 60).toFixed(1)}
 			/>
-
+			{isError && <ErrorBanner message={errorMessage} onRetry={retry} />}
 			<View style={styles.sectionHeader}>
 				<Text
 					variant="titleMedium"
@@ -65,7 +60,6 @@ export default function HomeScreen() {
 					</Button>
 				)}
 			</View>
-
 			{isLoading ? (
 				<View style={styles.loading}>
 					<ActivityIndicator size="large" color={colors.primary} />

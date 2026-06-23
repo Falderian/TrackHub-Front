@@ -1,6 +1,12 @@
 import { router, useFocusEffect } from "expo-router";
 import { Fragment, useCallback, useState } from "react";
-import { ActivityIndicator, FlatList, StyleSheet, View } from "react-native";
+import {
+	ActivityIndicator,
+	Alert,
+	FlatList,
+	StyleSheet,
+	View,
+} from "react-native";
 import {
 	Button,
 	Dialog,
@@ -11,12 +17,9 @@ import {
 	useTheme,
 } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import ErrorBanner from "../components/ErrorBanner";
 import RideRow from "../components/RideRow";
-import {
-	useDeleteRideMutation,
-	useRideStatsQuery,
-	useRidesQuery,
-} from "../hooks/queries";
+import { useDeleteRideMutation, useRidesOverview } from "../hooks/queries";
 
 export default function DashboardScreen() {
 	const { colors } = useTheme();
@@ -24,30 +27,32 @@ export default function DashboardScreen() {
 	const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
 
 	const {
-		data: ridesRes,
+		rides,
+		totalRides,
+		stats,
 		isLoading,
-		refetch,
 		isRefetching,
-	} = useRidesQuery({ pageSize: 100 });
-	const { data: stats } = useRideStatsQuery();
+		isError,
+		errorMessage,
+		retry,
+	} = useRidesOverview();
 	const deleteRide = useDeleteRideMutation();
 
-	const rides = ridesRes?.data ?? [];
-	const totalRides = ridesRes?.meta.total ?? 0;
-
-	// Re-fetch on focus (e.g. returning from ride detail after delete)
 	useFocusEffect(
 		useCallback(() => {
-			refetch();
-		}, [refetch]),
+			retry();
+		}, [retry]),
 	);
 
 	const handleDelete = useCallback(async () => {
 		if (deleteTarget == null) return;
 		try {
 			await deleteRide.mutateAsync(deleteTarget);
-		} catch {
-			// error state is available via deleteRide.error if needed
+		} catch (e: unknown) {
+			Alert.alert(
+				"Delete failed",
+				e instanceof Error ? e.message : "Something went wrong",
+			);
 		} finally {
 			setDeleteTarget(null);
 		}
@@ -78,6 +83,8 @@ export default function DashboardScreen() {
 					</Text>
 				</View>
 
+				{isError && <ErrorBanner message={errorMessage} onRetry={retry} />}
+
 				{!isLoading && rides.length > 0 && (
 					<View style={styles.summary}>
 						<Stat label={`${totalRides} rides`} />
@@ -103,7 +110,7 @@ export default function DashboardScreen() {
 							{ paddingBottom: insets.bottom + 16 },
 						]}
 						refreshing={isRefetching}
-						onRefresh={refetch}
+						onRefresh={retry}
 						showsVerticalScrollIndicator={false}
 						ListEmptyComponent={
 							<View style={styles.empty}>
