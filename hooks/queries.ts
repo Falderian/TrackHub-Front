@@ -20,7 +20,11 @@ export const rideKeys = {
 
 // ── Queries ──────────────────────────────────────────────────────
 
-export function useRidesQuery(params?: { page?: number; pageSize?: number }) {
+export function useRidesQuery(params?: {
+	page?: number;
+	pageSize?: number;
+	search?: string;
+}) {
 	return useQuery<PaginatedResponse<Ride>>({
 		queryKey: rideKeys.list(params),
 		queryFn: () => api.getRides(params),
@@ -78,8 +82,8 @@ function mergeErrors(fallback: string, queries: QueryLike[]) {
 	};
 }
 
-export function useRidesOverview(pageSize = 100) {
-	const rides = useRidesQuery({ pageSize });
+export function useRidesOverview(pageSize = 100, search?: string) {
+	const rides = useRidesQuery({ pageSize, search });
 	const stats = useRideStatsQuery();
 	const { isError, errorMessage, retry } = mergeErrors("Unable to load data", [
 		rides,

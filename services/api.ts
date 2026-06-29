@@ -85,10 +85,15 @@ export const api = {
 		>(`/rides/stats/buckets?${qs}`);
 	},
 
-	getRides: (params?: { page?: number; pageSize?: number }) => {
+	getRides: (params?: {
+		page?: number;
+		pageSize?: number;
+		search?: string;
+	}) => {
 		const qs = new URLSearchParams();
 		if (params?.page) qs.set("page", String(params.page));
 		if (params?.pageSize) qs.set("pageSize", String(params.pageSize));
+		if (params?.search) qs.set("search", params.search);
 		const suffix = qs.toString() ? `?${qs}` : "";
 		return request<PaginatedResponse<Ride>>(`/rides${suffix}`);
 	},

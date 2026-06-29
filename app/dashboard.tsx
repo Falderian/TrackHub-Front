@@ -1,5 +1,5 @@
 import { router, useFocusEffect } from "expo-router";
-import { Fragment, useCallback, useMemo, useState } from "react";
+import { Fragment, useCallback, useState } from "react";
 import { Alert, FlatList, StyleSheet, View } from "react-native";
 import {
 	Button,
@@ -32,7 +32,7 @@ export default function DashboardScreen() {
 		isError,
 		errorMessage,
 		retry,
-	} = useRidesOverview();
+	} = useRidesOverview(100, query.trim() || undefined);
 	const deleteRide = useDeleteRideMutation();
 
 	useFocusEffect(
@@ -40,12 +40,6 @@ export default function DashboardScreen() {
 			retry();
 		}, [retry]),
 	);
-
-	const filtered = useMemo(() => {
-		if (!query.trim()) return allRides;
-		const q = query.toLowerCase();
-		return allRides.filter((r) => (r.title ?? "").toLowerCase().includes(q));
-	}, [allRides, query]);
 
 	const handleDelete = useCallback(async () => {
 		if (deleteTarget == null) return;
@@ -114,7 +108,7 @@ export default function DashboardScreen() {
 					<SkeletonDashboard />
 				) : (
 					<FlatList
-						data={filtered}
+						data={allRides}
 						keyExtractor={(item) => String(item.id)}
 						renderItem={({ item }) => (
 							<RideRow ride={item} onDelete={() => setDeleteTarget(item.id)} />
