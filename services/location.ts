@@ -1,4 +1,5 @@
 import * as Location from "expo-location";
+import { Barometer } from "expo-sensors";
 import * as TaskManager from "expo-task-manager";
 import { haversine } from "../helpers/ride";
 import { clearActiveRide, loadActiveRide, saveActiveRide } from "./storage";
@@ -116,6 +117,32 @@ function passFilter(
 
 let droppedCount = 0;
 
+// ── Barometric altimeter ──────────────────────────────────────────
+
+let baroSubscription: { remove: () => void } | null = null;
+let baroBaseline: number | null = null;
+let baroAltitude: number | null = null;
+
+function startBarometer() {
+	baroBaseline = null;
+	baroAltitude = null;
+	Barometer.setUpdateInterval(1000);
+	baroSubscription = Barometer.addListener(({ pressure }) => {
+		if (baroBaseline === null) {
+			baroBaseline = pressure;
+		}
+		baroAltitude =
+			44330 * (1 - (pressure / (baroBaseline ?? pressure)) ** (1 / 5.255));
+	});
+}
+
+function stopBarometer() {
+	baroSubscription?.remove();
+	baroSubscription = null;
+	baroBaseline = null;
+	baroAltitude = null;
+}
+
 TaskManager.defineTask(TASK_NAME, async ({ data, error }) => {
 	if (error) {
 		console.warn("[TrackHub] location task error:", error.message);
@@ -132,7 +159,7 @@ TaskManager.defineTask(TASK_NAME, async ({ data, error }) => {
 			continue;
 		}
 		const ts = loc.timestamp < 1e12 ? loc.timestamp * 1000 : loc.timestamp;
-		const alt = loc.coords.altitude ?? undefined;
+		const alt = baroAltitude ?? loc.coords.altitude ?? undefined;
 		const spd = loc.coords.speed ?? undefined;
 		const coord: Coords = {
 			latitude: loc.coords.latitude,
@@ -210,6 +237,8 @@ export async function startTracking(): Promise<void> {
 		console.warn("[TrackHub] persist failed:", err),
 	);
 
+	startBarometer();
+
 	await Location.startLocationUpdatesAsync(TASK_NAME, TRACKING_OPTIONS);
 }
 
@@ -222,6 +251,8 @@ export async function pauseTracking(): Promise<void> {
 	state.paused = true;
 	state.startedAt = null;
 
+	stopBarometer();
+
 	await Location.stopLocationUpdatesAsync(TASK_NAME);
 	notify();
 }
@@ -231,6 +262,8 @@ export async function resumeTracking(): Promise<void> {
 
 	state.paused = false;
 	state.startedAt = Date.now();
+
+	startBarometer();
 
 	await Location.startLocationUpdatesAsync(TASK_NAME, TRACKING_OPTIONS);
 	notify();
@@ -244,7 +277,10 @@ export async function stopTracking(): Promise<RideSummary | null> {
 	}
 
 	if (!state.paused) {
+		stopBarometer();
 		await Location.stopLocationUpdatesAsync(TASK_NAME);
+	} else {
+		stopBarometer();
 	}
 
 	const summary: RideSummary = {

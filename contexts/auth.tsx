@@ -8,6 +8,7 @@ import {
 	useState,
 } from "react";
 import { api } from "../services/api";
+import { drainPendingSync } from "../services/recovery";
 import {
 	clearTokens as clearApiTokens,
 	restoreTokens,
@@ -23,6 +24,7 @@ type User = {
 type AuthState = {
 	user: User | null;
 	initializing: boolean;
+	isGuest: boolean;
 	login: (email: string, password: string) => Promise<void>;
 	register: (
 		email: string,
@@ -30,6 +32,7 @@ type AuthState = {
 		password: string,
 	) => Promise<void>;
 	logout: () => Promise<void>;
+	continueOffline: () => void;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -37,6 +40,7 @@ const AuthContext = createContext<AuthState | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
 	const [user, setUser] = useState<User | null>(null);
 	const [initializing, setInitializing] = useState(true);
+	const [isGuest, setIsGuest] = useState(false);
 
 	useEffect(() => {
 		(async () => {
@@ -59,6 +63,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 		await setTokens(data.accessToken, data.refreshToken);
 		const me = await api.getMe();
 		setUser(me);
+		setIsGuest(false);
+		drainPendingSync().catch((err) =>
+			console.warn("[TrackHub] drainPendingSync after login failed:", err),
+		);
 	}, []);
 
 	const register = useCallback(
@@ -67,6 +75,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 			await setTokens(data.accessToken, data.refreshToken);
 			const me = await api.getMe();
 			setUser(me);
+			setIsGuest(false);
+			drainPendingSync().catch((err) =>
+				console.warn("[TrackHub] drainPendingSync after register failed:", err),
+			);
 		},
 		[],
 	);
@@ -74,12 +86,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 	const logout = useCallback(async () => {
 		await clearApiTokens();
 		setUser(null);
+		setIsGuest(false);
 		router.replace("/(auth)/login");
+	}, []);
+
+	const continueOffline = useCallback(() => {
+		setUser({ id: 0, email: "", username: "Offline" });
+		setIsGuest(true);
+		setInitializing(false);
+		router.replace("/home");
 	}, []);
 
 	return (
 		<AuthContext.Provider
-			value={{ user, initializing, login, register, logout }}
+			value={{
+				user,
+				initializing,
+				isGuest,
+				login,
+				register,
+				logout,
+				continueOffline,
+			}}
 		>
 			{children}
 		</AuthContext.Provider>

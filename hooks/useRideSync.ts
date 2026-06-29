@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { roundTo } from "../helpers/ride";
 import { api } from "../services/api";
+import { saveLocalRide } from "../services/local-rides";
 import {
 	clearPersistedRide,
 	getRideState,
@@ -164,6 +165,8 @@ export function useRideSync(isActive: boolean) {
 				finalStats,
 			});
 
+			const didSync = Boolean(id);
+
 			if (!id) {
 				try {
 					const ride = await api.createRide({
@@ -191,6 +194,23 @@ export function useRideSync(isActive: boolean) {
 				} catch (err) {
 					console.warn("[TrackHub] completeRide finalize failed:", err);
 				}
+			}
+
+			if (!didSync && !id) {
+				saveLocalRide({
+					localId: -Date.now(),
+					title: new Date(summary.startTime).toLocaleDateString(),
+					startTime: summary.startTime,
+					endTime: lastPoint.timestamp,
+					distance: finalStats.distance,
+					avgSpeed: finalStats.avgSpeed,
+					maxSpeed: finalStats.maxSpeed,
+					elevationGain: finalStats.elevationGain,
+					elevationLoss: finalStats.elevationLoss,
+					completedAt: new Date().toISOString(),
+				}).catch((saveErr) =>
+					console.warn("[TrackHub] saveLocalRide failed:", saveErr),
+				);
 			}
 
 			rideIdRef.current = null;

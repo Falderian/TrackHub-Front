@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
 	ActivityIndicator,
 	RefreshControl,
@@ -16,6 +16,28 @@ import ErrorBanner from "../components/ErrorBanner";
 import HomeHeader from "../components/HomeHeader";
 import RideCard from "../components/RideCard";
 import { useRidesOverview } from "../hooks/queries";
+import {
+	clearLocalRides,
+	type LocalRide,
+	loadLocalRides,
+} from "../services/local-rides";
+
+function localToRide(l: LocalRide) {
+	return {
+		id: l.localId,
+		userId: 0,
+		title: l.title,
+		startTime: l.startTime,
+		endTime: l.endTime,
+		distance: l.distance * 1000, // km → meters
+		avgSpeed: l.avgSpeed,
+		maxSpeed: l.maxSpeed,
+		elevationGain: l.elevationGain,
+		elevationLoss: l.elevationLoss,
+		createdAt: l.completedAt,
+		updatedAt: l.completedAt,
+	};
+}
 
 export default function HomeScreen() {
 	const { colors } = useTheme();
@@ -33,11 +55,34 @@ export default function HomeScreen() {
 		retry,
 	} = useRidesOverview(5);
 
+	const [localRides, setLocalRides] = useState<LocalRide[]>([]);
+
+	// Load local rides when API fails
+	useEffect(() => {
+		if (isError) {
+			loadLocalRides()
+				.then(setLocalRides)
+				.catch(() => {});
+		}
+	}, [isError]);
+
+	// Clear local rides when API succeeds (they've been synced)
+	useEffect(() => {
+		if (!isLoading && !isError && rides.length > 0) {
+			clearLocalRides().catch(() => {});
+			setLocalRides([]);
+		}
+	}, [isLoading, isError, rides.length]);
+
 	useFocusEffect(
 		useCallback(() => {
 			retry();
 		}, [retry]),
 	);
+
+	const displayRides =
+		isError && rides.length === 0 ? localRides.map(localToRide) : rides;
+	const showOfflineLabel = isError && localRides.length > 0;
 
 	return (
 		<View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -46,11 +91,19 @@ export default function HomeScreen() {
 				backgroundColor={colors.background}
 			/>
 			<HomeHeader
-				totalRides={totalRides}
+				totalRides={totalRides || localRides.length}
 				totalKm={(stats?.totalKm ?? 0).toFixed(1)}
 				totalHrs={((stats?.totalMin ?? 0) / 60).toFixed(1)}
 			/>
-			{isError && <ErrorBanner message={errorMessage} onRetry={retry} />}
+			{showOfflineLabel && (
+				<ErrorBanner
+					message="You are offline. Showing rides saved on this device."
+					onRetry={retry}
+				/>
+			)}
+			{isError && !showOfflineLabel && (
+				<ErrorBanner message={errorMessage} onRetry={retry} />
+			)}
 			<ScrollView
 				style={styles.scroll}
 				contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}
@@ -69,7 +122,7 @@ export default function HomeScreen() {
 						variant="titleMedium"
 						style={{ color: colors.onBackground, fontWeight: "600" }}
 					>
-						Recent Rides
+						{showOfflineLabel ? "Recent Rides (offline)" : "Recent Rides"}
 					</Text>
 					{totalRides > 5 && (
 						<Button
@@ -87,13 +140,13 @@ export default function HomeScreen() {
 					<View style={styles.loading}>
 						<ActivityIndicator size="large" color={colors.primary} />
 					</View>
-				) : rides.length === 0 ? (
+				) : displayRides.length === 0 ? (
 					<View style={styles.ridesList}>
 						<EmptyRides />
 					</View>
 				) : (
 					<View style={styles.ridesList}>
-						{rides.map((ride) => (
+						{displayRides.slice(0, 5).map((ride) => (
 							<RideCard key={ride.id} ride={ride} />
 						))}
 					</View>

@@ -1,4 +1,5 @@
 import { api } from "./api";
+import { clearLocalRides } from "./local-rides";
 import { clearPersistedRide, loadActiveRide } from "./location";
 import { clearSyncMeta, loadSyncMeta } from "./storage";
 
@@ -58,6 +59,7 @@ export async function drainPendingSync(): Promise<boolean> {
 	if (ok) {
 		await clearPersistedRide().catch(() => {});
 		await clearSyncMeta().catch(() => {});
+		await clearLocalRides().catch(() => {});
 	}
 
 	return ok;

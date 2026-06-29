@@ -23,7 +23,7 @@ const TEST_EMAIL = "test@example.com";
 const TEST_PASSWORD = "secret123";
 
 export default function LoginScreen() {
-	const { login } = useAuth();
+	const { login, continueOffline } = useAuth();
 	const { colors } = useTheme();
 	const [email, setEmail] = useState(TEST_EMAIL);
 	const [password, setPassword] = useState(TEST_PASSWORD);
@@ -129,6 +129,31 @@ export default function LoginScreen() {
 				>
 					Don't have an account? Register
 				</Link>
+
+				<View style={styles.offlineSection}>
+					<Divider
+						style={[styles.divider, { backgroundColor: colors.outline }]}
+					/>
+					<Text
+						variant="bodySmall"
+						style={{
+							color: colors.onSurfaceVariant,
+							textAlign: "center",
+							marginBottom: 12,
+						}}
+					>
+						No internet? Record rides now, sync later.
+					</Text>
+					<Button
+						mode="outlined"
+						icon="wifi-off"
+						onPress={continueOffline}
+						textColor={colors.onSurfaceVariant}
+						style={[styles.offlineButton, { borderColor: colors.outline }]}
+					>
+						Continue Offline
+					</Button>
+				</View>
 			</ScrollView>
 		</KeyboardAvoidingView>
 	);
@@ -182,5 +207,11 @@ const styles = StyleSheet.create({
 		textAlign: "center",
 		fontSize: 14,
 		fontWeight: "500",
+	},
+	offlineSection: {
+		marginTop: 8,
+	},
+	offlineButton: {
+		borderRadius: 12,
 	},
 });
