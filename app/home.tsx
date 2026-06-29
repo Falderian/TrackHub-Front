@@ -2,7 +2,6 @@ import { router, useFocusEffect } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useState } from "react";
 import {
-	ActivityIndicator,
 	RefreshControl,
 	ScrollView,
 	StyleSheet,
@@ -15,6 +14,7 @@ import EmptyRides from "../components/EmptyRides";
 import ErrorBanner from "../components/ErrorBanner";
 import HomeHeader from "../components/HomeHeader";
 import RideCard from "../components/RideCard";
+import { SkeletonHome } from "../components/SkeletonLoader";
 import { useRidesOverview } from "../hooks/queries";
 import {
 	clearLocalRides,
@@ -137,9 +137,7 @@ export default function HomeScreen() {
 					)}
 				</View>
 				{isLoading ? (
-					<View style={styles.loading}>
-						<ActivityIndicator size="large" color={colors.primary} />
-					</View>
+					<SkeletonHome />
 				) : displayRides.length === 0 ? (
 					<View style={styles.ridesList}>
 						<EmptyRides />

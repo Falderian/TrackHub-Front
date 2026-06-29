@@ -2,6 +2,7 @@ import { router } from "expo-router";
 import { useCallback } from "react";
 import { StyleSheet } from "react-native";
 import { Surface, useTheme } from "react-native-paper";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRecordLayoutUI, useRecordMapUI } from "../contexts/RecordUIContext";
 import type { RideData } from "../hooks/useRide";
 import RideControls from "./RideControls";
@@ -15,6 +16,7 @@ interface Props {
 
 export default function RidePanel({ ride }: Props) {
 	const { colors } = useTheme();
+	const insets = useSafeAreaInsets();
 	const { mapRef } = useRecordMapUI();
 	const { expanded } = useRecordLayoutUI();
 
@@ -41,7 +43,7 @@ export default function RidePanel({ ride }: Props) {
 		<Surface
 			style={[
 				expanded ? styles.expanded : styles.compact,
-				{ backgroundColor: colors.surface },
+				{ backgroundColor: colors.surface, paddingBottom: insets.bottom + 24 },
 			]}
 			elevation={5}
 		>
@@ -67,7 +69,6 @@ const styles = StyleSheet.create({
 		left: 0,
 		right: 0,
 		paddingTop: 16,
-		paddingBottom: 60,
 		paddingHorizontal: 20,
 		borderTopLeftRadius: 28,
 		borderTopRightRadius: 28,
@@ -75,7 +76,6 @@ const styles = StyleSheet.create({
 	},
 	expanded: {
 		paddingTop: 16,
-		paddingBottom: 60,
 		paddingHorizontal: 20,
 		gap: 16,
 	},

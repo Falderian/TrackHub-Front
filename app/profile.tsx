@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { StyleSheet, useColorScheme, View } from "react-native";
+import { Alert, StyleSheet, useColorScheme, View } from "react-native";
 import {
 	Avatar,
 	Button,
@@ -108,7 +108,16 @@ export default function ProfileScreen() {
 					textColor={colors.error}
 					style={{ borderColor: colors.error }}
 					contentStyle={styles.logoutBtn}
-					onPress={() => logout()}
+					onPress={() =>
+						Alert.alert("Logout", "Are you sure you want to logout?", [
+							{ text: "Cancel", style: "cancel" },
+							{
+								text: "Logout",
+								style: "destructive",
+								onPress: () => logout(),
+							},
+						])
+					}
 				>
 					Log out
 				</Button>

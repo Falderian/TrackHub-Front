@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { Alert, StyleSheet, View } from "react-native";
 import {
 	Avatar,
 	Button,
@@ -9,6 +9,7 @@ import {
 	Text,
 	useTheme,
 } from "react-native-paper";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "../contexts/auth";
 import StatCard from "./StatCard";
 
@@ -23,11 +24,12 @@ export default function HomeHeader({
 }) {
 	const { user, logout } = useAuth();
 	const { colors } = useTheme();
+	const insets = useSafeAreaInsets();
 	const [menuVisible, setMenuVisible] = useState(false);
 	const initials = user?.username?.slice(0, 2).toUpperCase() ?? "??";
 
 	return (
-		<View style={styles.root}>
+		<View style={[styles.root, { paddingTop: insets.top + 16 }]}>
 			<View style={styles.welcomeRow}>
 				<Avatar.Text
 					size={56}
@@ -80,7 +82,14 @@ export default function HomeHeader({
 						leadingIcon="logout"
 						onPress={() => {
 							setMenuVisible(false);
-							logout();
+							Alert.alert("Logout", "Are you sure you want to logout?", [
+								{ text: "Cancel", style: "cancel" },
+								{
+									text: "Logout",
+									style: "destructive",
+									onPress: () => logout(),
+								},
+							]);
 						}}
 						title="Logout"
 					/>
@@ -109,7 +118,7 @@ export default function HomeHeader({
 }
 
 const styles = StyleSheet.create({
-	root: { paddingHorizontal: 24, paddingTop: 64 },
+	root: { paddingHorizontal: 24 },
 	welcomeRow: {
 		flexDirection: "row",
 		alignItems: "center",

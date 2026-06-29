@@ -1,7 +1,7 @@
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef, useState } from "react";
-import { Alert, StyleSheet, View } from "react-native";
+import { Alert, Linking, StyleSheet, View } from "react-native";
 import { Button, Text, useTheme } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import RideMap, { type RideMapHandle } from "../components/RideMap";
@@ -64,8 +64,15 @@ function RecordLayout() {
 				>
 					Location access is required to record rides.
 				</Text>
-				<Button mode="contained" onPress={() => router.back()}>
+				<Button
+					mode="contained"
+					onPress={() => router.back()}
+					style={{ marginBottom: 12 }}
+				>
 					Go Back
+				</Button>
+				<Button mode="outlined" onPress={() => Linking.openSettings()}>
+					Open Settings
 				</Button>
 			</View>
 		);

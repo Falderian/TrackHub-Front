@@ -37,9 +37,9 @@ export const fmtTime = (totalSeconds: number): string => {
 export const fmtDist = (km: number, unit: UnitSystem = "metric"): string => {
 	if (unit === "imperial") {
 		const mi = km * 0.621371;
-		return mi >= 10 ? `${Math.round(mi)} mi` : mi.toFixed(1);
+		return mi >= 10 ? `${Math.round(mi)} mi` : `${mi.toFixed(1)} mi`;
 	}
-	return km >= 10 ? `${Math.round(km)}k` : km.toFixed(1);
+	return km >= 10 ? `${Math.round(km)} km` : `${km.toFixed(1)} km`;
 };
 
 /** Format an elevation value. Input is always meters; display depends on unit. */

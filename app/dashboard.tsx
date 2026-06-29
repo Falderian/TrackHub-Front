@@ -1,12 +1,6 @@
 import { router, useFocusEffect } from "expo-router";
 import { Fragment, useCallback, useMemo, useState } from "react";
-import {
-	ActivityIndicator,
-	Alert,
-	FlatList,
-	StyleSheet,
-	View,
-} from "react-native";
+import { Alert, FlatList, StyleSheet, View } from "react-native";
 import {
 	Button,
 	Dialog,
@@ -20,6 +14,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import ErrorBanner from "../components/ErrorBanner";
 import RideRow from "../components/RideRow";
+import { SkeletonDashboard } from "../components/SkeletonLoader";
 import { useDeleteRideMutation, useRidesOverview } from "../hooks/queries";
 
 export default function DashboardScreen() {
@@ -116,9 +111,7 @@ export default function DashboardScreen() {
 				)}
 
 				{isLoading ? (
-					<View style={styles.loading}>
-						<ActivityIndicator size="large" color={colors.primary} />
-					</View>
+					<SkeletonDashboard />
 				) : (
 					<FlatList
 						data={filtered}
@@ -205,7 +198,6 @@ const styles = StyleSheet.create({
 		paddingHorizontal: 24,
 		paddingBottom: 16,
 	},
-	loading: { flex: 1, justifyContent: "center", alignItems: "center" },
 	empty: { alignItems: "center", paddingTop: 80 },
 	list: { paddingHorizontal: 24 },
 });

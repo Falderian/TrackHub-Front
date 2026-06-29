@@ -2,7 +2,6 @@ import { router } from "expo-router";
 import { useMemo, useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import {
-	ActivityIndicator,
 	IconButton,
 	SegmentedButtons,
 	Text,
@@ -10,6 +9,7 @@ import {
 } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import ErrorBanner from "../components/ErrorBanner";
+import { SkeletonStats } from "../components/SkeletonLoader";
 import StatsChart from "../components/StatsChart";
 import StatsSummary from "../components/StatsSummary";
 import { computeRange, type Range } from "../helpers/stats";
@@ -60,11 +60,7 @@ export default function StatsScreen() {
 				/>
 				{isError && <ErrorBanner message={errorMessage} onRetry={retry} />}
 				{isLoading ? (
-					<ActivityIndicator
-						size="large"
-						color={colors.primary}
-						style={{ marginTop: 60 }}
-					/>
+					<SkeletonStats />
 				) : (
 					<>
 						{stats && <StatsSummary stats={stats} />}
