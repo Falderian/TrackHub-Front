@@ -7,7 +7,7 @@ import {
 	useWindowDimensions,
 	View,
 } from "react-native";
-import { Snackbar, Text, useTheme } from "react-native-paper";
+import { Snackbar, useTheme } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import DeleteRideDialog from "../../components/DeleteRideDialog";
 import ErrorBanner from "../../components/ErrorBanner";
@@ -112,29 +112,22 @@ export default function RideDetailScreen() {
 				<RideMap
 					initialLat={mid?.latitude ?? 53.9}
 					initialLon={mid?.longitude ?? 27.55}
-					locations={[]}
-				/>
-				<RideDetailHeader
-					onDelete={() => setShowDeleteDialog(true)}
-					deleting={deleting}
+					locations={ride.trackPoints ?? []}
 				/>
 			</View>
+
+			<RideDetailHeader
+				title={ride.title ?? "Untitled ride"}
+				dateLabel={dateLabel}
+				onDelete={() => setShowDeleteDialog(true)}
+				deleting={deleting}
+			/>
 
 			<ScrollView
 				style={styles.body}
 				contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
 				showsVerticalScrollIndicator={false}
 			>
-				<Text
-					variant="headlineSmall"
-					style={[styles.title, { color: colors.onBackground }]}
-				>
-					{ride.title ?? "Untitled ride"}
-				</Text>
-				<Text variant="bodySmall" style={{ color: colors.onSurfaceVariant }}>
-					{dateLabel}
-				</Text>
-
 				<RideHeroStats
 					distanceKm={distanceKm}
 					duration={durLabel ?? "—"}
@@ -179,7 +172,6 @@ export default function RideDetailScreen() {
 const styles = StyleSheet.create({
 	container: { flex: 1 },
 	centered: { justifyContent: "center", alignItems: "center" },
-	mapWrap: { height: 220 },
+	mapWrap: { flex: 1 },
 	body: { flex: 1, paddingHorizontal: 24, paddingTop: 20 },
-	title: { fontWeight: "700" },
 });
