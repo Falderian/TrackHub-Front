@@ -34,6 +34,7 @@ export default function RootLayout() {
 						<Stack screenOptions={{ headerShown: false }}>
 							<Stack.Screen name="(auth)" />
 							<Stack.Screen name="home" />
+							<Stack.Screen name="maintenance" />
 							<Stack.Screen name="dashboard" />
 							<Stack.Screen name="record" />
 							<Stack.Screen name="stats" />

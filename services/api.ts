@@ -1,4 +1,12 @@
-import type { PaginatedResponse, Ride, RideStats } from "../types";
+import type {
+	MaintenanceAction,
+	MaintenanceLog,
+	MaintenanceStatus,
+	MaintenanceType,
+	PaginatedResponse,
+	Ride,
+	RideStats,
+} from "../types";
 import { getApiBase } from "./config";
 import { getAccessToken, tokensReady, tryRefresh } from "./tokens";
 
@@ -173,4 +181,49 @@ export const api = {
 		if (!res.ok) throw new Error("Failed to download GPX");
 		return res.text();
 	},
+
+	// ── Maintenance ──────────────────────────────────────────
+
+	getMaintenanceSettings: () =>
+		request<{ type: string; action: string }[]>("/maintenance/settings"),
+
+	toggleMaintenanceSetting: (type: string, disabled: boolean) =>
+		request<void>(`/maintenance/settings/${type}`, {
+			method: "PUT",
+			body: JSON.stringify({ disabled }),
+		}),
+
+	getMaintenanceSummary: () =>
+		request<MaintenanceStatus[]>("/maintenance/summary"),
+
+	getMaintenanceLogs: (params?: {
+		page?: number;
+		pageSize?: number;
+		type?: MaintenanceType;
+	}) => {
+		const qs = new URLSearchParams();
+		if (params?.page) qs.set("page", String(params.page));
+		if (params?.pageSize) qs.set("pageSize", String(params.pageSize));
+		if (params?.type) qs.set("type", params.type);
+		const suffix = qs.toString() ? `?${qs}` : "";
+		return request<PaginatedResponse<MaintenanceLog>>(`/maintenance${suffix}`);
+	},
+
+	createMaintenanceLog: (data: {
+		type: MaintenanceType;
+		action: MaintenanceAction;
+		odometerKm: number;
+		intervalKm?: number;
+		intervalDays?: number;
+		cost?: number;
+		notes?: string;
+		performedAt: string;
+	}) =>
+		request<MaintenanceLog>("/maintenance", {
+			method: "POST",
+			body: JSON.stringify(data),
+		}),
+
+	deleteMaintenanceLog: (id: number) =>
+		request<void>(`/maintenance/${id}`, { method: "DELETE" }),
 };

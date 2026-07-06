@@ -1,6 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../services/api";
-import type { PaginatedResponse, Ride, RideStats } from "../types";
+import type {
+	MaintenanceAction,
+	MaintenanceLog,
+	MaintenanceStatus,
+	MaintenanceType,
+	PaginatedResponse,
+	Ride,
+	RideStats,
+} from "../types";
 
 // ── Query key factories ──────────────────────────────────────────
 
@@ -144,6 +152,72 @@ export function useDeleteRideMutation() {
 			);
 			// Invalidate to refetch fresh data
 			queryClient.invalidateQueries({ queryKey: rideKeys.all });
+		},
+	});
+}
+
+// ── Maintenance query keys ────────────────────────────────────
+
+export const maintenanceKeys = {
+	all: ["maintenance"] as const,
+	summary: () => [...maintenanceKeys.all, "summary"] as const,
+	logs: () => [...maintenanceKeys.all, "logs"] as const,
+	logsList: (params?: {
+		page?: number;
+		pageSize?: number;
+		type?: MaintenanceType;
+	}) => [...maintenanceKeys.logs(), params] as const,
+};
+
+// ── Maintenance queries ────────────────────────────────────────
+
+export function useMaintenanceSummaryQuery() {
+	return useQuery<MaintenanceStatus[]>({
+		queryKey: maintenanceKeys.summary(),
+		queryFn: () => api.getMaintenanceSummary(),
+		staleTime: 30_000,
+	});
+}
+
+export function useMaintenanceLogsQuery(params?: {
+	page?: number;
+	pageSize?: number;
+	type?: MaintenanceType;
+}) {
+	return useQuery<PaginatedResponse<MaintenanceLog>>({
+		queryKey: maintenanceKeys.logsList(params),
+		queryFn: () => api.getMaintenanceLogs(params),
+		staleTime: 30_000,
+	});
+}
+
+export function useCreateMaintenanceLogMutation() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (data: {
+			type: MaintenanceType;
+			action: MaintenanceAction;
+			odometerKm: number;
+			intervalKm?: number;
+			intervalDays?: number;
+			cost?: number;
+			notes?: string;
+			performedAt: string;
+		}) => api.createMaintenanceLog(data),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: maintenanceKeys.all });
+		},
+	});
+}
+
+export function useDeleteMaintenanceLogMutation() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (id: number) => api.deleteMaintenanceLog(id),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: maintenanceKeys.all });
 		},
 	});
 }

@@ -79,6 +79,14 @@ export default function HomeHeader({
 						title="Stats"
 					/>
 					<Menu.Item
+						leadingIcon="wrench"
+						onPress={() => {
+							setMenuVisible(false);
+							router.push("/maintenance");
+						}}
+						title="Maintenance"
+					/>
+					<Menu.Item
 						leadingIcon="logout"
 						onPress={() => {
 							setMenuVisible(false);
