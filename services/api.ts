@@ -184,8 +184,7 @@ export const api = {
 
 	// ── Maintenance ──────────────────────────────────────────
 
-	getMaintenanceSettings: () =>
-		request<{ type: string; action: string }[]>("/maintenance/settings"),
+	getMaintenanceSettings: () => request<string[]>("/maintenance/settings"),
 
 	toggleMaintenanceSetting: (type: string, disabled: boolean) =>
 		request<void>(`/maintenance/settings/${type}`, {
@@ -212,7 +211,7 @@ export const api = {
 	createMaintenanceLog: (data: {
 		type: MaintenanceType;
 		action: MaintenanceAction;
-		odometerKm: number;
+		odometerKm?: number;
 		intervalKm?: number;
 		intervalDays?: number;
 		cost?: number;
@@ -221,6 +220,33 @@ export const api = {
 	}) =>
 		request<MaintenanceLog>("/maintenance", {
 			method: "POST",
+			body: JSON.stringify(data),
+		}),
+
+	quickService: (
+		type: MaintenanceType,
+		action: MaintenanceAction = "replace",
+	) =>
+		request<MaintenanceLog>(`/maintenance/service/${type}`, {
+			method: "POST",
+			body: JSON.stringify({ action }),
+		}),
+
+	updateMaintenanceLog: (
+		id: number,
+		data: {
+			type?: MaintenanceType;
+			action?: MaintenanceAction;
+			odometerKm?: number;
+			intervalKm?: number;
+			intervalDays?: number;
+			cost?: number;
+			notes?: string;
+			performedAt?: string;
+		},
+	) =>
+		request<MaintenanceLog>(`/maintenance/${id}`, {
+			method: "PATCH",
 			body: JSON.stringify(data),
 		}),
 

@@ -1,11 +1,19 @@
 import { useState } from "react";
 import { StyleSheet, TextInput, View } from "react-native";
-import { Button, Dialog, Portal, Text, useTheme } from "react-native-paper";
+import {
+	Button,
+	Chip,
+	Dialog,
+	Portal,
+	Text,
+	useTheme,
+} from "react-native-paper";
 import type {
 	MaintenanceAction,
 	MaintenanceType,
 	MaintenanceTypeInfo,
 } from "../types";
+import { BRAKE_PAD_MATERIALS, FORK_TYPES } from "../types";
 import { getDefaults } from "./MaintenanceStatusCard";
 
 const TYPE_INFO: Record<string, MaintenanceTypeInfo> = {};
@@ -27,13 +35,18 @@ for (const t of [
 ])
 	TYPE_INFO[t.type] = t;
 
+export interface MaintenanceLogData {
+	intervalKm?: number;
+	intervalDays?: number;
+}
+
 interface Props {
 	visible: boolean;
 	type: MaintenanceType;
 	action: MaintenanceAction;
 	saving: boolean;
 	onDismiss: () => void;
-	onSave: (odometerKm: number) => void;
+	onSave: (data: MaintenanceLogData) => void;
 }
 
 export default function MaintenanceLogDialog({
@@ -45,10 +58,34 @@ export default function MaintenanceLogDialog({
 	onSave,
 }: Props) {
 	const { colors } = useTheme();
-	const [odo, setOdo] = useState("");
-
 	const defs = getDefaults(type, action);
 	const info = TYPE_INFO[type];
+
+	const [intervalKm, setIntervalKm] = useState(defs.km);
+	const [intervalDays, setIntervalDays] = useState(defs.days);
+
+	const handleSave = () => {
+		const kmNum = intervalKm ? Number.parseFloat(intervalKm) : undefined;
+		const daysNum = intervalDays
+			? Number.parseInt(intervalDays, 10)
+			: undefined;
+		const data: MaintenanceLogData = {
+			intervalKm: kmNum && !Number.isNaN(kmNum) ? kmNum : undefined,
+			intervalDays: daysNum && !Number.isNaN(daysNum) ? daysNum : undefined,
+		};
+		onSave(data);
+		setIntervalKm(defs.km);
+		setIntervalDays(defs.days);
+	};
+
+	const presets: { label: string; km: number; days: number }[] = [];
+	if (type === "brake_pads") {
+		for (const m of BRAKE_PAD_MATERIALS)
+			presets.push({ label: m.label, km: m.intervalKm, days: 0 });
+	} else if (type === "fork") {
+		for (const f of FORK_TYPES)
+			presets.push({ label: f.label, km: f.intervalKm, days: f.intervalDays });
+	}
 
 	return (
 		<Portal>
@@ -61,68 +98,78 @@ export default function MaintenanceLogDialog({
 						variant="bodyMedium"
 						style={{ color: colors.onSurfaceVariant, marginBottom: 12 }}
 					>
-						Current odometer (km):
+						Odometer auto-fills from total ride distance. Set service intervals:
 					</Text>
-					<TextInput
-						value={odo}
-						onChangeText={setOdo}
-						keyboardType="numeric"
-						placeholder="e.g. 3427"
-						placeholderTextColor={colors.onSurfaceVariant}
-						style={[
-							styles.input,
-							{
-								color: colors.onSurface,
-								backgroundColor: colors.surfaceVariant,
-							},
-						]}
-						autoFocus
-					/>
-					<View style={styles.quickRow}>
-						{["+100", "+500", "+1000"].map((l) => (
-							<Button
-								key={l}
-								mode="outlined"
-								compact
-								style={{ flex: 1 }}
-								onPress={() =>
-									setOdo(
-										String(
-											(Number.parseFloat(odo) || 0) + Number.parseInt(l, 10),
-										),
-									)
-								}
+
+					<View style={styles.row}>
+						<View style={{ flex: 1 }}>
+							<Text
+								variant="labelSmall"
+								style={{ color: colors.onSurfaceVariant, marginBottom: 4 }}
 							>
-								{l}
-							</Button>
-						))}
+								Every (km)
+							</Text>
+							<TextInput
+								value={intervalKm}
+								onChangeText={setIntervalKm}
+								keyboardType="numeric"
+								placeholder="e.g. 2000"
+								placeholderTextColor={colors.onSurfaceVariant}
+								style={[
+									styles.input,
+									{
+										color: colors.onSurface,
+										backgroundColor: colors.surfaceVariant,
+									},
+								]}
+							/>
+						</View>
+						<View style={{ flex: 1 }}>
+							<Text
+								variant="labelSmall"
+								style={{ color: colors.onSurfaceVariant, marginBottom: 4 }}
+							>
+								Every (days)
+							</Text>
+							<TextInput
+								value={intervalDays}
+								onChangeText={setIntervalDays}
+								keyboardType="numeric"
+								placeholder="e.g. 90"
+								placeholderTextColor={colors.onSurfaceVariant}
+								style={[
+									styles.input,
+									{
+										color: colors.onSurface,
+										backgroundColor: colors.surfaceVariant,
+									},
+								]}
+							/>
+						</View>
 					</View>
-					<Text
-						variant="labelSmall"
-						style={{
-							color: colors.onSurfaceVariant,
-							marginTop: 8,
-							textAlign: "center",
-						}}
-					>
-						Interval:{" "}
-						{[
-							defs.km ? `${defs.km} km` : "",
-							defs.days ? `${defs.days} days` : "",
-						]
-							.filter(Boolean)
-							.join(" · ") || "none"}
-					</Text>
+
+					{presets.length > 0 && (
+						<View style={styles.chips}>
+							{presets.map((p) => (
+								<Chip
+									key={p.label}
+									compact
+									mode="outlined"
+									style={{ marginRight: 6, marginBottom: 4 }}
+									onPress={() => {
+										setIntervalKm(String(p.km));
+										setIntervalDays(p.days > 0 ? String(p.days) : "");
+									}}
+								>
+									{p.label}
+								</Chip>
+							))}
+						</View>
+					)}
 				</Dialog.Content>
 				<Dialog.Actions>
 					<Button onPress={onDismiss}>Cancel</Button>
-					<Button
-						onPress={() => {
-							const n = Number.parseFloat(odo);
-							if (!Number.isNaN(n) && n >= 0) onSave(n);
-						}}
-						loading={saving}
-					>
+					<Button onPress={handleSave} loading={saving}>
 						Save
 					</Button>
 				</Dialog.Actions>
@@ -132,14 +179,13 @@ export default function MaintenanceLogDialog({
 }
 
 const styles = StyleSheet.create({
+	row: { flexDirection: "row", gap: 10, marginBottom: 4 },
+	chips: { flexDirection: "row", flexWrap: "wrap", marginTop: 8 },
 	input: {
-		fontSize: 28,
-		fontWeight: "800",
-		textAlign: "center",
-		paddingVertical: 12,
-		paddingHorizontal: 16,
-		borderRadius: 12,
-		marginBottom: 12,
+		fontSize: 16,
+		paddingVertical: 10,
+		paddingHorizontal: 14,
+		borderRadius: 10,
+		marginBottom: 10,
 	},
-	quickRow: { flexDirection: "row", gap: 6 },
 });

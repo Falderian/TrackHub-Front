@@ -198,13 +198,30 @@ export function useCreateMaintenanceLogMutation() {
 		mutationFn: (data: {
 			type: MaintenanceType;
 			action: MaintenanceAction;
-			odometerKm: number;
+			odometerKm?: number;
 			intervalKm?: number;
 			intervalDays?: number;
 			cost?: number;
 			notes?: string;
 			performedAt: string;
 		}) => api.createMaintenanceLog(data),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: maintenanceKeys.all });
+		},
+	});
+}
+
+export function useQuickServiceMutation() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: ({
+			type,
+			action = "replace" as MaintenanceAction,
+		}: {
+			type: MaintenanceType;
+			action?: MaintenanceAction;
+		}) => api.quickService(type, action),
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: maintenanceKeys.all });
 		},

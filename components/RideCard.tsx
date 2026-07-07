@@ -8,7 +8,7 @@ export default function RideCard({ ride }: { ride: Ride }) {
 	const { colors } = useTheme();
 	const speedLabel = "km/h";
 	const distDisplay =
-		ride.distance != null ? fmtDist(ride.distance / 1000, "metric") : "—";
+		ride.distance != null ? fmtDist(ride.distance, "metric") : "—";
 
 	return (
 		<Pressable onPress={() => router.push(`/ride/${ride.id}`)}>

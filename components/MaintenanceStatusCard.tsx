@@ -93,6 +93,7 @@ interface Props {
 	disabled: boolean;
 	onToggle: () => void;
 	onLog: (action: MaintenanceAction) => void;
+	onQuickService: (action: MaintenanceAction) => void;
 }
 
 export default function MaintenanceStatusCard({
@@ -101,6 +102,7 @@ export default function MaintenanceStatusCard({
 	disabled,
 	onToggle,
 	onLog,
+	onQuickService,
 }: Props) {
 	const { colors } = useTheme();
 	const info = TYPE_INFO[type];
@@ -177,11 +179,20 @@ export default function MaintenanceStatusCard({
 							{txt}
 						</Text>
 						<IconButton
-							icon="plus-circle-outline"
+							icon="checkbox-marked-circle-outline"
 							size={20}
-							iconColor={disabled ? colors.onSurfaceVariant : colors.primary}
-							onPress={() => onLog(action)}
+							iconColor={disabled ? colors.onSurfaceVariant : "#4caf50"}
+							onPress={() => onQuickService(action)}
 							style={{ margin: 0 }}
+						/>
+						<IconButton
+							icon="pencil-outline"
+							size={18}
+							iconColor={
+								disabled ? colors.onSurfaceVariant : colors.onSurfaceVariant
+							}
+							onPress={() => onLog(action)}
+							style={{ margin: 0, marginLeft: -4 }}
 						/>
 					</View>
 				);

@@ -101,8 +101,7 @@ export default function RideDetailScreen() {
 
 	const chartW = screenW - 40 - 32 - 52;
 
-	const distanceKm =
-		ride.distance != null ? (ride.distance / 1000).toFixed(1) : "—";
+	const distanceKm = ride.distance != null ? ride.distance.toFixed(1) : "—";
 	const elevation =
 		ride.elevationGain != null ? `${Math.round(ride.elevationGain)}` : "—";
 

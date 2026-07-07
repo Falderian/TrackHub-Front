@@ -21,14 +21,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import ErrorBanner from "../components/ErrorBanner";
 import MaintenanceHistoryList from "../components/MaintenanceHistoryList";
 import MaintenanceLogDialog from "../components/MaintenanceLogDialog";
-import MaintenanceStatusCard, {
-	getDefaults,
-} from "../components/MaintenanceStatusCard";
+import MaintenanceStatusCard from "../components/MaintenanceStatusCard";
 import {
 	useCreateMaintenanceLogMutation,
 	useDeleteMaintenanceLogMutation,
 	useMaintenanceLogsQuery,
 	useMaintenanceSummaryQuery,
+	useQuickServiceMutation,
 } from "../hooks/queries";
 import { api } from "../services/api";
 import type {
@@ -46,6 +45,7 @@ export default function MaintenanceScreen() {
 	const summary = useMaintenanceSummaryQuery();
 	const logs = useMaintenanceLogsQuery({ pageSize: 50 });
 	const createLog = useCreateMaintenanceLogMutation();
+	const quickService = useQuickServiceMutation();
 	const deleteLog = useDeleteMaintenanceLogMutation();
 
 	const [tab, setTab] = useState<"status" | "history">("status");
@@ -100,19 +100,32 @@ export default function MaintenanceScreen() {
 		[disabled],
 	);
 
-	const handleSave = useCallback(
-		async (odoKm: number) => {
-			if (!dialog) return;
-			const defs = getDefaults(dialog.type, dialog.action);
+	const handleQuickService = useCallback(
+		async (type: MaintenanceType, action: MaintenanceAction) => {
 			try {
-				await createLog.mutateAsync({
-					type: dialog.type,
-					action: dialog.action,
-					odometerKm: odoKm,
-					intervalKm: defs.km ? Number.parseFloat(defs.km) : undefined,
-					intervalDays: defs.days ? Number.parseInt(defs.days, 10) : undefined,
-					performedAt: new Date().toISOString(),
-				});
+				await quickService.mutateAsync({ type, action });
+			} catch (e: unknown) {
+				Alert.alert(
+					"Failed",
+					e instanceof Error ? e.message : "Something went wrong",
+				);
+			}
+		},
+		[quickService],
+	);
+
+	const handleSave = useCallback(
+		async (data: { intervalKm?: number; intervalDays?: number }) => {
+			if (!dialog) return;
+			const payload = {
+				type: dialog.type,
+				action: dialog.action,
+				intervalKm: data.intervalKm,
+				intervalDays: data.intervalDays,
+				performedAt: new Date().toISOString(),
+			};
+			try {
+				await createLog.mutateAsync(payload);
 				setDialog(null);
 			} catch (e: unknown) {
 				Alert.alert(
@@ -194,6 +207,7 @@ export default function MaintenanceScreen() {
 							disabled={disabled.has(info.type)}
 							onToggle={() => toggle(info.type)}
 							onLog={(action) => setDialog({ type: info.type, action })}
+							onQuickService={(action) => handleQuickService(info.type, action)}
 						/>
 					)}
 					contentContainerStyle={{

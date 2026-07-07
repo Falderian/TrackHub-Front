@@ -29,7 +29,7 @@ function localToRide(l: LocalRide) {
 		title: l.title,
 		startTime: l.startTime,
 		endTime: l.endTime,
-		distance: l.distance * 1000, // km → meters
+		distance: l.distance,
 		avgSpeed: l.avgSpeed,
 		maxSpeed: l.maxSpeed,
 		elevationGain: l.elevationGain,

@@ -24,7 +24,7 @@ export default function RideRow({
 			: null;
 
 	const distDisplay =
-		ride.distance != null ? fmtDist(ride.distance / 1000, "metric") : null;
+		ride.distance != null ? fmtDist(ride.distance, "metric") : null;
 
 	const content = (
 		<Pressable onPress={() => router.push(`/ride/${ride.id}`)}>
