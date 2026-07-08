@@ -13,7 +13,7 @@ Cycling GPS tracker mobile app. React Native + Expo + Paper UI.
 | Charts | react-native-gifted-charts |
 | Theme | Nord palette + red accent |
 | Auth | JWT (access + refresh, expo-secure-store) |
-| Backend | [TrackHub API](https://trackhub--local.sneograt.deno.net) |
+| Backend | [TrackHub API](https://trackhub-to06.onrender.com) |
 
 ## Development
 
@@ -40,7 +40,7 @@ Your phone and machine must be on the same network.
 
 ## Backend
 
-The API is deployed at `https://trackhub--local.sneograt.deno.net`. Local dev: `cd ../back && deno task dev`.
+The API is deployed at `https://trackhub-to06.onrender.com`. Local dev: `cd ../back && deno task dev`.
 
 ## Offline & guest mode
 

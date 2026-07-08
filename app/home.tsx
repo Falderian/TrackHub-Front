@@ -13,9 +13,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import EmptyRides from "../components/EmptyRides";
 import ErrorBanner from "../components/ErrorBanner";
 import HomeHeader from "../components/HomeHeader";
+import MaintenanceAlert from "../components/MaintenanceAlert";
 import RideCard from "../components/RideCard";
 import { SkeletonHome } from "../components/SkeletonLoader";
-import { useRidesOverview } from "../hooks/queries";
+import { useMaintenanceSummaryQuery, useRidesOverview } from "../hooks/queries";
 import {
 	clearLocalRides,
 	type LocalRide,
@@ -54,6 +55,8 @@ export default function HomeScreen() {
 		errorMessage,
 		retry,
 	} = useRidesOverview(5);
+
+	const summary = useMaintenanceSummaryQuery();
 
 	const [localRides, setLocalRides] = useState<LocalRide[]>([]);
 
@@ -95,6 +98,7 @@ export default function HomeScreen() {
 				totalKm={(stats?.totalKm ?? 0).toFixed(1)}
 				totalHrs={((stats?.totalMin ?? 0) / 60).toFixed(1)}
 			/>
+			<MaintenanceAlert statuses={summary.data ?? []} />
 			{showOfflineLabel && (
 				<ErrorBanner
 					message="You are offline. Showing rides saved on this device."

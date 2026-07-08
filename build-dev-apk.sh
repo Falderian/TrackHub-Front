@@ -36,7 +36,7 @@ docker compose exec -T builder bash -c "
     npx expo prebuild --platform android
     # Add .debug suffix so dev APK installs alongside release
     if ! grep -q 'applicationIdSuffix ".debug"' android/app/build.gradle 2>/dev/null; then
-      sed -i 's/debug {$/debug {\n            applicationIdSuffix ".debug"/' android/app/build.gradle
+      sed -i '/^    buildTypes/,/^    }/ s/debug {$/debug {\n            applicationIdSuffix ".debug"/' android/app/build.gradle
     fi
   fi
   echo '=== Building APK ==='

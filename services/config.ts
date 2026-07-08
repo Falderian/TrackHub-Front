@@ -10,6 +10,6 @@ export async function getApiBase(): Promise<string> {
 		return apiBase;
 	}
 
-	apiBase = "https://trackhub--local.sneograt.deno.net/";
+	apiBase = "https://trackhub-to06.onrender.com/";
 	return apiBase;
 }

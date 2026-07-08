@@ -21,7 +21,7 @@ import { useAuth } from "../../contexts/auth";
 
 const TEST_EMAIL = "newuser@example.com";
 const TEST_USERNAME = "rider1";
-const TEST_PASSWORD = "secret123";
+const TEST_PASSWORD = "test123";
 
 export default function RegisterScreen() {
 	const { register } = useAuth();
