@@ -1,5 +1,5 @@
 import { StyleSheet, View } from "react-native";
-import { Text, useTheme } from "react-native-paper";
+import { Divider, Icon, Surface, Text, useTheme } from "react-native-paper";
 import type { DetailStat } from "../hooks/useRideDetail";
 
 interface Props {
@@ -10,42 +10,60 @@ export default function RideDetailGrid({ items }: Props) {
 	const { colors } = useTheme();
 
 	return (
-		<View style={styles.grid}>
-			{items.map((d) => (
-				<View
-					key={d.label}
-					style={[styles.cell, { backgroundColor: colors.surfaceVariant }]}
-				>
-					<Text variant="labelSmall" style={{ color: colors.onSurfaceVariant }}>
-						{d.label}
-					</Text>
-					<Text
-						variant="bodyLarge"
-						style={{
-							color: colors.onBackground,
-							fontWeight: "600",
-							marginTop: 2,
-						}}
-					>
-						{d.value}
-					</Text>
+		<Surface
+			style={[
+				styles.card,
+				{
+					backgroundColor: colors.surface,
+					borderColor: colors.outlineVariant,
+				},
+			]}
+			elevation={0}
+		>
+			{items.map((d, i) => (
+				<View key={d.label}>
+					{i > 0 && (
+						<Divider style={{ backgroundColor: colors.outlineVariant }} />
+					)}
+					<View style={styles.row}>
+						<Icon source={d.icon} size={20} color={colors.primary} />
+						<Text
+							variant="bodyMedium"
+							style={[styles.label, { color: colors.onSurfaceVariant }]}
+						>
+							{d.label}
+						</Text>
+						<Text
+							variant="bodyLarge"
+							style={[styles.value, { color: colors.onSurface }]}
+						>
+							{d.value}
+						</Text>
+					</View>
 				</View>
 			))}
-		</View>
+		</Surface>
 	);
 }
 
 const styles = StyleSheet.create({
-	grid: {
-		flexDirection: "row",
-		flexWrap: "wrap",
-		gap: 12,
-		marginBottom: 24,
-	},
-	cell: {
-		flex: 1,
-		minWidth: "45%",
+	card: {
 		borderRadius: 12,
-		padding: 14,
+		borderWidth: 1,
+		marginBottom: 16,
+	},
+	row: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 10,
+		paddingVertical: 12,
+		paddingHorizontal: 14,
+	},
+	label: {
+		flex: 1,
+	},
+	value: {
+		fontWeight: "600",
+		fontVariant: ["tabular-nums"],
 	},
 });

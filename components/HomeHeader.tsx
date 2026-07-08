@@ -17,16 +17,19 @@ export default function HomeHeader({
 	totalRides,
 	totalKm,
 	totalHrs,
+	criticalCount = 0,
 }: {
 	totalRides: number;
 	totalKm: string;
 	totalHrs: string;
+	criticalCount?: number;
 }) {
 	const { user, logout } = useAuth();
 	const { colors } = useTheme();
 	const insets = useSafeAreaInsets();
 	const [menuVisible, setMenuVisible] = useState(false);
 	const initials = user?.username?.slice(0, 2).toUpperCase() ?? "??";
+	const blocked = criticalCount > 0;
 
 	return (
 		<View style={[styles.root, { paddingTop: insets.top + 16 }]}>
@@ -112,14 +115,17 @@ export default function HomeHeader({
 
 			<Button
 				mode="contained"
-				icon="bike"
-				onPress={() => router.push("/record")}
-				buttonColor={colors.primary}
+				icon={blocked ? "lock" : "bike"}
+				onPress={() => {
+					if (!blocked) router.push("/record");
+				}}
+				buttonColor={blocked ? colors.surfaceVariant : colors.primary}
+				textColor={blocked ? colors.onSurfaceVariant : colors.onPrimary}
 				contentStyle={styles.ctaInner}
-				style={styles.cta}
+				style={blocked ? styles.ctaBlocked : styles.cta}
 				labelStyle={{ fontWeight: "700", fontSize: 16 }}
 			>
-				Start a Ride
+				{blocked ? "Resolve maintenance first" : "Start a Ride"}
 			</Button>
 		</View>
 	);
@@ -137,5 +143,6 @@ const styles = StyleSheet.create({
 	iconBtn: { margin: 0 },
 	statsRow: { flexDirection: "row", gap: 12, marginBottom: 24 },
 	cta: { borderRadius: 14, marginBottom: 32 },
+	ctaBlocked: { borderRadius: 14, marginBottom: 12 },
 	ctaInner: { paddingVertical: 8 },
 });

@@ -9,8 +9,8 @@ export default function EmptyRides() {
 			style={[styles.card, { backgroundColor: colors.surface }]}
 			elevation={1}
 		>
-			<View style={[styles.icon, { backgroundColor: colors.surfaceVariant }]}>
-				<Icon source="bike" size={40} color={colors.onSurfaceVariant} />
+			<View style={[styles.icon, { backgroundColor: colors.primaryContainer }]}>
+				<Icon source="bike" size={40} color={colors.primary} />
 			</View>
 			<Text
 				variant="titleMedium"

@@ -58,6 +58,10 @@ export default function HomeScreen() {
 
 	const summary = useMaintenanceSummaryQuery();
 
+	const criticalCount = (summary.data ?? []).filter(
+		(s) => !s.disabled && s.action === "replace" && s.status === "due",
+	).length;
+
 	const [localRides, setLocalRides] = useState<LocalRide[]>([]);
 
 	// Load local rides when API fails
@@ -97,6 +101,7 @@ export default function HomeScreen() {
 				totalRides={totalRides || localRides.length}
 				totalKm={(stats?.totalKm ?? 0).toFixed(1)}
 				totalHrs={((stats?.totalMin ?? 0) / 60).toFixed(1)}
+				criticalCount={criticalCount}
 			/>
 			<MaintenanceAlert statuses={summary.data ?? []} />
 			{showOfflineLabel && (

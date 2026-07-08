@@ -35,13 +35,7 @@ function formatLabel(s: MaintenanceStatus): string {
 function buildMessage(
 	due: MaintenanceStatus[],
 	soon: MaintenanceStatus[],
-	unknown: MaintenanceStatus[],
 ): string {
-	// No history at all — nudge to set up tracking
-	if (due.length === 0 && soon.length === 0 && unknown.length > 0) {
-		return `${unknown.length} maintenance item${unknown.length > 1 ? "s" : ""} not set up — Tap to configure`;
-	}
-
 	if (due.length === 1 && soon.length === 0) {
 		const s = due[0];
 		const typeLabel = TYPE_LABEL[s.type] ?? s.type;
@@ -70,66 +64,41 @@ interface Props {
 
 export default function MaintenanceAlert({ statuses }: Props) {
 	const { colors } = useTheme();
+	const c = colors as unknown as Record<string, string>;
+	const warning = c.warning ?? "#c9a050";
+	const warningContainer = c.warningContainer ?? "#3d3018";
+	const onWarningContainer = c.onWarningContainer ?? "#f0deaa";
 
 	const relevant = statuses.filter(
 		(s) => !s.disabled && (s.status === "due" || s.status === "soon"),
 	);
-
-	const unknown = statuses.filter((s) => !s.disabled && s.status === "unknown");
-
 	const due = relevant.filter((s) => s.status === "due");
 	const soon = relevant.filter((s) => s.status === "soon");
 
 	const [dismissed, setDismissed] = useState(false);
 
-	const allAlertItems = [...relevant, ...unknown];
-	const fingerprint = allAlertItems
+	const fingerprint = relevant
 		.map((s) => `${s.type}:${s.action}:${s.status}`)
 		.sort()
 		.join("|");
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: <>
 	useEffect(() => {
-		if (fingerprint) setDismissed(false);
+		setDismissed(false);
 	}, [fingerprint]);
 
-	if (allAlertItems.length === 0 || dismissed) return null;
+	if (relevant.length === 0 || dismissed) return null;
 
 	const hasDue = due.length > 0;
-	const hasSoon = soon.length > 0;
-	const message = buildMessage(due, soon, unknown);
+	const message = buildMessage(due, soon);
 
-	// Colors: due=error, soon=warning, unknown=primary setup nudge
-	const backgroundColor = hasDue
-		? colors.errorContainer
-		: hasSoon
-			? colors.surfaceVariant
-			: colors.primaryContainer;
-	const textColor = hasDue
-		? colors.onErrorContainer
-		: hasSoon
-			? colors.onSurfaceVariant
-			: colors.onPrimaryContainer;
-	const iconColor = hasDue
-		? colors.error
-		: hasSoon
-			? "#e6a817"
-			: colors.primary;
-	const iconName = hasDue
-		? "alert-circle"
-		: hasSoon
-			? "clock-alert-outline"
-			: "wrench-outline";
-
-	const handlePress = () => {
-		router.push("/maintenance");
-	};
-
-	const handleDismiss = () => {
-		setDismissed(true);
-	};
+	const backgroundColor = hasDue ? colors.errorContainer : warningContainer;
+	const textColor = hasDue ? colors.onErrorContainer : onWarningContainer;
+	const iconColor = hasDue ? colors.error : warning;
+	const iconName = hasDue ? "alert-circle" : "clock-alert-outline";
 
 	return (
-		<Pressable onPress={handlePress}>
+		<Pressable onPress={() => router.push("/maintenance")}>
 			<Surface style={[styles.card, { backgroundColor }]} elevation={0}>
 				<View style={styles.row}>
 					<Icon source={iconName} size={20} color={iconColor} />
@@ -145,7 +114,7 @@ export default function MaintenanceAlert({ statuses }: Props) {
 					icon="close"
 					size={18}
 					iconColor={textColor}
-					onPress={handleDismiss}
+					onPress={() => setDismissed(true)}
 					style={styles.dismiss}
 				/>
 			</Surface>
@@ -170,10 +139,6 @@ const styles = StyleSheet.create({
 		flex: 1,
 		marginRight: 8,
 	},
-	message: {
-		flex: 1,
-	},
-	dismiss: {
-		margin: 0,
-	},
+	message: { flex: 1 },
+	dismiss: { margin: 0 },
 });

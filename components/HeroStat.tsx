@@ -28,5 +28,5 @@ export default function HeroStat({ value, unit, icon }: Props) {
 }
 
 const styles = StyleSheet.create({
-	stat: { alignItems: "center", gap: 4 },
+	stat: { alignItems: "center", gap: 2 },
 });

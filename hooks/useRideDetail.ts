@@ -132,22 +132,31 @@ export default function useRideDetail() {
 						? `${typedRide.maxSpeed.toFixed(1)} km/h`
 						: "—",
 			},
-			{
-				icon: "timer-outline",
-				label: "Pace",
-				value:
-					typedRide?.avgSpeed != null
-						? `${fmtPace(typedRide.avgSpeed)} /km`
-						: "—",
-			},
 		];
-		if ((typedRide?.elevationLoss ?? 0) > 0) {
-			items.push({
-				icon: "arrow-down-bold",
-				label: "Descent",
-				value: `−${Math.round(typedRide?.elevationLoss ?? 0)} m`,
-			});
-		}
+		items.push({
+			icon: "elevation-rise",
+			label: "Elev gain",
+			value:
+				(typedRide?.elevationGain ?? 0) > 0
+					? `+${Math.round(typedRide?.elevationGain)} m`
+					: "—",
+		});
+		items.push({
+			icon: "arrow-down-bold",
+			label: "Elev loss",
+			value:
+				(typedRide?.elevationLoss ?? 0) > 0
+					? `−${Math.round(typedRide?.elevationLoss)} m`
+					: "—",
+		});
+		items.push({
+			icon: "timer-outline",
+			label: "Pace",
+			value:
+				typedRide?.avgSpeed != null
+					? `${fmtPace(typedRide.avgSpeed)} /km`
+					: "—",
+		});
 		items.push({
 			icon: "map-marker-path",
 			label: "Track points",

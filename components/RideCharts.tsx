@@ -15,13 +15,13 @@ export default function RideCharts({ speedData, elevationData, width }: Props) {
 
 	return (
 		<>
-			<View style={styles.card}>
+			<View style={[styles.card, { backgroundColor: colors.surface }]}>
 				<Text
 					variant="titleSmall"
 					style={{
-						color: colors.onBackground,
+						color: colors.onSurface,
 						fontWeight: "600",
-						marginBottom: 16,
+						marginBottom: 12,
 					}}
 				>
 					Speed
@@ -29,13 +29,13 @@ export default function RideCharts({ speedData, elevationData, width }: Props) {
 				<SpeedChart data={speedData} width={width} />
 			</View>
 
-			<View style={styles.card}>
+			<View style={[styles.card, { backgroundColor: colors.surface }]}>
 				<Text
 					variant="titleSmall"
 					style={{
-						color: colors.onBackground,
+						color: colors.onSurface,
 						fontWeight: "600",
-						marginBottom: 16,
+						marginBottom: 12,
 					}}
 				>
 					Elevation
@@ -48,9 +48,8 @@ export default function RideCharts({ speedData, elevationData, width }: Props) {
 
 const styles = StyleSheet.create({
 	card: {
-		backgroundColor: "rgba(128,128,128,0.06)",
 		borderRadius: 16,
-		padding: 20,
-		marginBottom: 16,
+		padding: 14,
+		marginBottom: 12,
 	},
 });

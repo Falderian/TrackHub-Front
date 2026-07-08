@@ -32,7 +32,9 @@ export default function RideRow({
 				style={[styles.card, { backgroundColor: colors.surface }]}
 				elevation={1}
 			>
-				<View style={[styles.icon, { backgroundColor: colors.surfaceVariant }]}>
+				<View
+					style={[styles.icon, { backgroundColor: colors.primaryContainer }]}
+				>
 					<Icon source="bike" size={20} color={colors.primary} />
 				</View>
 				<View style={styles.body}>

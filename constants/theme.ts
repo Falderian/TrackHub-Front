@@ -24,9 +24,9 @@ const trackHubDark = {
 		onBackground: "#e8e4f0",
 		surface: "#2c2b32",
 		onSurface: "#e8e4f0",
-		surfaceVariant: "#3a3942",
-		onSurfaceVariant: "#9a96a8",
-		outline: "#545260",
+		surfaceVariant: "#35343e",
+		onSurfaceVariant: "#c8c4d4",
+		outline: "#5e5c6a",
 		outlineVariant: "#3a3942",
 		elevation: {
 			level0: "#232228",
@@ -68,7 +68,7 @@ const trackHubLight = {
 		surface: "#ffffff",
 		onSurface: "#2a2630",
 		surfaceVariant: "#eceaf2",
-		onSurfaceVariant: "#757080",
+		onSurfaceVariant: "#5e5a6a",
 		outline: "#d2cedb",
 		outlineVariant: "#eceaf2",
 		elevation: {

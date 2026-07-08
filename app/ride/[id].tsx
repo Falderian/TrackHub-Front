@@ -1,25 +1,19 @@
-import * as FileSystem from "expo-file-system";
-import * as Sharing from "expo-sharing";
-import { useCallback, useState } from "react";
 import {
 	ScrollView,
 	StyleSheet,
 	useWindowDimensions,
 	View,
 } from "react-native";
-import { Snackbar, useTheme } from "react-native-paper";
+import { useTheme } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import DeleteRideDialog from "../../components/DeleteRideDialog";
 import ErrorBanner from "../../components/ErrorBanner";
-import RideActions from "../../components/RideActions";
 import RideCharts from "../../components/RideCharts";
-import RideDetailGrid from "../../components/RideDetailGrid";
 import RideDetailHeader from "../../components/RideDetailHeader";
-import RideHeroStats from "../../components/RideHeroStats";
 import RideMap from "../../components/RideMap";
+import RideStatsCard from "../../components/RideStatsCard";
 import { SkeletonRideDetail } from "../../components/SkeletonLoader";
 import useRideDetail from "../../hooks/useRideDetail";
-import { api } from "../../services/api";
 
 export default function RideDetailScreen() {
 	const { colors } = useTheme();
@@ -40,36 +34,6 @@ export default function RideDetailScreen() {
 		details,
 		hasCharts,
 	} = useRideDetail();
-
-	const [exporting, setExporting] = useState(false);
-	const [snackVisible, setSnackVisible] = useState(false);
-
-	const handleExportGpx = useCallback(async () => {
-		if (!ride) return;
-		setExporting(true);
-		try {
-			const gpx = await api.getRideGpx(ride.id);
-			const filename = `trackhub-ride-${ride.id}.gpx`;
-			const fileUri = `${FileSystem.cacheDirectory}${filename}`;
-			await FileSystem.writeAsStringAsync(fileUri, gpx, {
-				encoding: FileSystem.EncodingType.UTF8,
-			});
-			const canShare = await Sharing.isAvailableAsync();
-			if (canShare) {
-				await Sharing.shareAsync(fileUri, {
-					mimeType: "application/gpx+xml",
-					dialogTitle: "Export GPX",
-				});
-			} else {
-				setSnackVisible(true);
-			}
-		} catch (err) {
-			console.warn("[TrackHub] GPX export failed:", err);
-			setSnackVisible(true);
-		} finally {
-			setExporting(false);
-		}
-	}, [ride]);
 
 	// ── Error state ──────────────────────────────────────────────
 
@@ -127,13 +91,12 @@ export default function RideDetailScreen() {
 				contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
 				showsVerticalScrollIndicator={false}
 			>
-				<RideHeroStats
+				<RideStatsCard
 					distanceKm={distanceKm}
 					duration={durLabel ?? "—"}
 					elevationGain={elevation}
+					details={details}
 				/>
-
-				<RideDetailGrid items={details} />
 
 				{hasCharts && (
 					<RideCharts
@@ -142,12 +105,6 @@ export default function RideDetailScreen() {
 						width={chartW}
 					/>
 				)}
-
-				<RideActions
-					exporting={exporting}
-					onExport={handleExportGpx}
-					onDelete={() => setShowDeleteDialog(true)}
-				/>
 			</ScrollView>
 
 			<DeleteRideDialog
@@ -156,14 +113,6 @@ export default function RideDetailScreen() {
 				onConfirm={handleDelete}
 				loading={deleting}
 			/>
-
-			<Snackbar
-				visible={snackVisible}
-				onDismiss={() => setSnackVisible(false)}
-				duration={3000}
-			>
-				Could not export GPX. Try again.
-			</Snackbar>
 		</View>
 	);
 }
@@ -172,5 +121,5 @@ const styles = StyleSheet.create({
 	container: { flex: 1 },
 	centered: { justifyContent: "center", alignItems: "center" },
 	mapWrap: { flex: 1 },
-	body: { flex: 1, paddingHorizontal: 24, paddingTop: 20 },
+	body: { flex: 1, paddingHorizontal: 16, paddingTop: 12 },
 });
