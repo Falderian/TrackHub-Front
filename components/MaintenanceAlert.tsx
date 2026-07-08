@@ -2,61 +2,8 @@ import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Icon, IconButton, Surface, Text, useTheme } from "react-native-paper";
-import type { MaintenanceStatus, MaintenanceType } from "../types";
-
-const TYPE_LABEL: Record<MaintenanceType, string> = {
-	brake_pads: "Brake pads",
-	fork: "Fork",
-	tires: "Tires",
-	chain: "Chain",
-	cassette: "Cassette",
-	other: "Maintenance",
-};
-
-function formatLabel(s: MaintenanceStatus): string {
-	const parts: string[] = [];
-	if (s.remainingKm !== null) {
-		parts.push(
-			s.remainingKm <= 0
-				? `${Math.abs(s.remainingKm)} km ago`
-				: `${s.remainingKm} km left`,
-		);
-	}
-	if (s.remainingDays !== null) {
-		parts.push(
-			s.remainingDays <= 0
-				? `${Math.abs(s.remainingDays)}d ago`
-				: `${s.remainingDays}d left`,
-		);
-	}
-	return parts.join(" · ");
-}
-
-function buildMessage(
-	due: MaintenanceStatus[],
-	soon: MaintenanceStatus[],
-): string {
-	if (due.length === 1 && soon.length === 0) {
-		const s = due[0];
-		const typeLabel = TYPE_LABEL[s.type] ?? s.type;
-		const action = s.action === "replace" ? "replacement" : "check";
-		const label = formatLabel(s);
-		return `${typeLabel} ${action} overdue — ${label}`;
-	}
-	if (due.length === 0 && soon.length === 1) {
-		const s = soon[0];
-		const typeLabel = TYPE_LABEL[s.type] ?? s.type;
-		const action = s.action === "replace" ? "replacement" : "check";
-		const label = formatLabel(s);
-		return `${typeLabel} ${action} due soon — ${label}`;
-	}
-
-	const parts: string[] = [];
-	if (due.length > 0)
-		parts.push(`${due.length} item${due.length > 1 ? "s" : ""} overdue`);
-	if (soon.length > 0) parts.push(`${soon.length} due soon`);
-	return `${parts.join(", ")} — Tap to review`;
-}
+import { buildMessage } from "../helpers/maintenance";
+import type { MaintenanceStatus } from "../types";
 
 interface Props {
 	statuses: MaintenanceStatus[];

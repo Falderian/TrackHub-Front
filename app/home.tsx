@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
 	RefreshControl,
 	ScrollView,
@@ -16,29 +16,18 @@ import HomeHeader from "../components/HomeHeader";
 import MaintenanceAlert from "../components/MaintenanceAlert";
 import RideCard from "../components/RideCard";
 import { SkeletonHome } from "../components/SkeletonLoader";
-import { useMaintenanceSummaryQuery, useRidesOverview } from "../hooks/queries";
+import { getWeekRange } from "../helpers/date";
+import {
+	useMaintenanceSummaryQuery,
+	useRideStatsQuery,
+	useRidesOverview,
+} from "../hooks/queries";
 import {
 	clearLocalRides,
 	type LocalRide,
 	loadLocalRides,
+	toRide,
 } from "../services/local-rides";
-
-function localToRide(l: LocalRide) {
-	return {
-		id: l.localId,
-		userId: 0,
-		title: l.title,
-		startTime: l.startTime,
-		endTime: l.endTime,
-		distance: l.distance,
-		avgSpeed: l.avgSpeed,
-		maxSpeed: l.maxSpeed,
-		elevationGain: l.elevationGain,
-		elevationLoss: l.elevationLoss,
-		createdAt: l.completedAt,
-		updatedAt: l.completedAt,
-	};
-}
 
 export default function HomeScreen() {
 	const { colors } = useTheme();
@@ -51,6 +40,7 @@ export default function HomeScreen() {
 		stats,
 		isLoading,
 		isRefetching,
+		isStale,
 		isError,
 		errorMessage,
 		retry,
@@ -58,9 +48,15 @@ export default function HomeScreen() {
 
 	const summary = useMaintenanceSummaryQuery();
 
-	const criticalCount = (summary.data ?? []).filter(
-		(s) => !s.disabled && s.action === "replace" && s.status === "due",
-	).length;
+	const weekRange = useMemo(() => getWeekRange(), []);
+	const weeklyStats = useRideStatsQuery(weekRange.from, weekRange.to);
+
+	const weeklyActivityLine = useMemo(() => {
+		const n = weeklyStats.data?.totalRides ?? 0;
+		if (n === 0) return "No rides this week yet";
+		if (n === 1) return "1 ride so far this week";
+		return `${n} rides so far this week`;
+	}, [weeklyStats.data?.totalRides]);
 
 	const [localRides, setLocalRides] = useState<LocalRide[]>([]);
 
@@ -83,12 +79,12 @@ export default function HomeScreen() {
 
 	useFocusEffect(
 		useCallback(() => {
-			retry();
-		}, [retry]),
+			if (isStale) retry();
+		}, [retry, isStale]),
 	);
 
 	const displayRides =
-		isError && rides.length === 0 ? localRides.map(localToRide) : rides;
+		isError && rides.length === 0 ? localRides.map(toRide) : rides;
 	const showOfflineLabel = isError && localRides.length > 0;
 
 	return (
@@ -101,7 +97,6 @@ export default function HomeScreen() {
 				totalRides={totalRides || localRides.length}
 				totalKm={(stats?.totalKm ?? 0).toFixed(1)}
 				totalHrs={((stats?.totalMin ?? 0) / 60).toFixed(1)}
-				criticalCount={criticalCount}
 			/>
 			<MaintenanceAlert statuses={summary.data ?? []} />
 			{showOfflineLabel && (
@@ -127,12 +122,20 @@ export default function HomeScreen() {
 				}
 			>
 				<View style={styles.sectionHeader}>
-					<Text
-						variant="titleMedium"
-						style={{ color: colors.onBackground, fontWeight: "600" }}
-					>
-						{showOfflineLabel ? "Recent Rides (offline)" : "Recent Rides"}
-					</Text>
+					<View>
+						<Text
+							variant="titleMedium"
+							style={{
+								color: colors.onBackground,
+								fontWeight: "600",
+							}}
+						>
+							{showOfflineLabel ? "Recent Rides (offline)" : "Recent Rides"}
+						</Text>
+						<Text variant="bodySmall" style={{ color: colors.primary }}>
+							{weeklyActivityLine}
+						</Text>
+					</View>
 					{totalRides > 5 && (
 						<Button
 							mode="text"
@@ -174,5 +177,4 @@ const styles = StyleSheet.create({
 		marginBottom: 12,
 	},
 	ridesList: { paddingHorizontal: 24 },
-	loading: { paddingTop: 80, justifyContent: "center", alignItems: "center" },
 });

@@ -1,51 +1,35 @@
 import { router } from "expo-router";
 import { useState } from "react";
 import { Alert, StyleSheet, View } from "react-native";
-import {
-	Avatar,
-	Button,
-	IconButton,
-	Menu,
-	Text,
-	useTheme,
-} from "react-native-paper";
+import { Button, IconButton, Menu, Text, useTheme } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "../contexts/auth";
+import { greeting } from "../helpers/date";
 import StatCard from "./StatCard";
 
 export default function HomeHeader({
 	totalRides,
 	totalKm,
 	totalHrs,
-	criticalCount = 0,
 }: {
 	totalRides: number;
 	totalKm: string;
 	totalHrs: string;
-	criticalCount?: number;
 }) {
 	const { user, logout } = useAuth();
 	const { colors } = useTheme();
 	const insets = useSafeAreaInsets();
 	const [menuVisible, setMenuVisible] = useState(false);
-	const initials = user?.username?.slice(0, 2).toUpperCase() ?? "??";
-	const blocked = criticalCount > 0;
 
 	return (
 		<View style={[styles.root, { paddingTop: insets.top + 16 }]}>
 			<View style={styles.welcomeRow}>
-				<Avatar.Text
-					size={56}
-					label={initials}
-					color={colors.onPrimary}
-					style={{ backgroundColor: colors.primary }}
-				/>
 				<View style={styles.welcomeText}>
 					<Text
 						variant="titleLarge"
 						style={{ color: colors.onBackground, fontWeight: "700" }}
 					>
-						Welcome back
+						{greeting()}
 					</Text>
 					<Text variant="bodyMedium" style={{ color: colors.onSurfaceVariant }}>
 						{user?.email}
@@ -115,17 +99,15 @@ export default function HomeHeader({
 
 			<Button
 				mode="contained"
-				icon={blocked ? "lock" : "bike"}
-				onPress={() => {
-					if (!blocked) router.push("/record");
-				}}
-				buttonColor={blocked ? colors.surfaceVariant : colors.primary}
-				textColor={blocked ? colors.onSurfaceVariant : colors.onPrimary}
+				icon="bike"
+				onPress={() => router.push("/record")}
+				buttonColor={colors.primary}
+				textColor={colors.onPrimary}
 				contentStyle={styles.ctaInner}
-				style={blocked ? styles.ctaBlocked : styles.cta}
+				style={styles.cta}
 				labelStyle={{ fontWeight: "700", fontSize: 16 }}
 			>
-				{blocked ? "Resolve maintenance first" : "Start a Ride"}
+				Start a Ride
 			</Button>
 		</View>
 	);
@@ -135,14 +117,13 @@ const styles = StyleSheet.create({
 	root: { paddingHorizontal: 24 },
 	welcomeRow: {
 		flexDirection: "row",
-		alignItems: "center",
+		alignItems: "flex-start",
 		gap: 16,
-		marginBottom: 28,
+		marginBottom: 24,
 	},
 	welcomeText: { flex: 1 },
 	iconBtn: { margin: 0 },
 	statsRow: { flexDirection: "row", gap: 12, marginBottom: 24 },
-	cta: { borderRadius: 14, marginBottom: 32 },
-	ctaBlocked: { borderRadius: 14, marginBottom: 12 },
+	cta: { borderRadius: 14, marginBottom: 16 },
 	ctaInner: { paddingVertical: 8 },
 });

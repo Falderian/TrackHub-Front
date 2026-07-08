@@ -1,7 +1,8 @@
 import { router } from "expo-router";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Icon, Surface, Text, useTheme } from "react-native-paper";
-import { fmtDist } from "../helpers/ride";
+import { relativeTime } from "../helpers/date";
+import { fmtDist, rideDuration } from "../helpers/ride";
 import type { Ride } from "../types";
 
 export default function RideCard({ ride }: { ride: Ride }) {
@@ -9,6 +10,13 @@ export default function RideCard({ ride }: { ride: Ride }) {
 	const speedLabel = "km/h";
 	const distDisplay =
 		ride.distance != null ? fmtDist(ride.distance, "metric") : "—";
+	const timeAgo = relativeTime(ride.startTime);
+	const duration = rideDuration(ride.startTime, ride.endTime);
+
+	const metaParts: string[] = [timeAgo, distDisplay];
+	if (ride.avgSpeed != null)
+		metaParts.push(`${ride.avgSpeed.toFixed(1)} ${speedLabel}`);
+	if (duration) metaParts.push(duration);
 
 	return (
 		<Pressable onPress={() => router.push(`/ride/${ride.id}`)}>
@@ -25,11 +33,12 @@ export default function RideCard({ ride }: { ride: Ride }) {
 					>
 						{ride.title}
 					</Text>
-					<Text variant="labelSmall" style={{ color: colors.onSurfaceVariant }}>
-						{distDisplay}
-						{ride.avgSpeed != null
-							? ` · ${ride.avgSpeed.toFixed(1)} ${speedLabel}`
-							: ""}
+					<Text
+						variant="labelSmall"
+						style={{ color: colors.onSurfaceVariant }}
+						numberOfLines={1}
+					>
+						{metaParts.join(" · ")}
 					</Text>
 				</View>
 				<Icon

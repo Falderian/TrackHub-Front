@@ -7,16 +7,12 @@ import {
 	Text,
 	useTheme,
 } from "react-native-paper";
+import { dotColor, getDefaults, statusLabel } from "../helpers/maintenance";
 import type {
 	MaintenanceAction,
 	MaintenanceStatus,
 	MaintenanceType,
 	MaintenanceTypeInfo,
-} from "../types";
-import {
-	BRAKE_PAD_MATERIALS,
-	FORK_TYPES,
-	MAINTENANCE_DEFAULTS,
 } from "../types";
 
 const TYPE_INFO: Record<string, MaintenanceTypeInfo> = {};
@@ -36,56 +32,6 @@ for (const t of [
 	{ type: "cassette" as MaintenanceType, label: "Cassette", icon: "cog" },
 ])
 	TYPE_INFO[t.type] = t;
-
-function dotColor(
-	status: string,
-	disabled: boolean,
-	colors: ReturnType<typeof useTheme>["colors"],
-) {
-	if (disabled) return colors.onSurfaceVariant;
-	switch (status) {
-		case "due":
-			return colors.error;
-		case "soon":
-			return "#e6a817";
-		case "ok":
-			return "#4caf50";
-		default:
-			return colors.onSurfaceVariant;
-	}
-}
-
-function label(s: MaintenanceStatus): string {
-	if (s.status === "unknown") return s.disabled ? "Disabled" : "No data";
-	const p: string[] = [];
-	if (s.remainingKm !== null)
-		p.push(
-			s.remainingKm <= 0
-				? `Overdue ${Math.abs(s.remainingKm)}km`
-				: `${s.remainingKm}km left`,
-		);
-	if (s.remainingDays !== null)
-		p.push(
-			s.remainingDays <= 0
-				? `Overdue ${Math.abs(s.remainingDays)}d`
-				: `${s.remainingDays}d left`,
-		);
-	return p.length > 0 ? p.join(" · ") : s.status === "ok" ? "OK" : "DUE";
-}
-
-export function getDefaults(type: MaintenanceType, action: MaintenanceAction) {
-	const def = MAINTENANCE_DEFAULTS[type];
-	let km = action === "check" ? def.checkKm : def.replaceKm;
-	let days = action === "check" ? def.checkDays : def.replaceDays;
-	if (km === 0 && days === 0) {
-		if (type === "brake_pads") km = BRAKE_PAD_MATERIALS[0].intervalKm;
-		if (type === "fork") {
-			km = FORK_TYPES[0].intervalKm;
-			days = FORK_TYPES[0].intervalDays;
-		}
-	}
-	return { km: km > 0 ? String(km) : "", days: days > 0 ? String(days) : "" };
-}
 
 interface Props {
 	type: MaintenanceType;
@@ -145,7 +91,7 @@ export default function MaintenanceStatusCard({
 						: colors.onSurfaceVariant;
 				let txt: string;
 				if (disabled) txt = "Disabled";
-				else if (s) txt = label(s);
+				else if (s) txt = statusLabel(s);
 				else {
 					const p = [
 						defs.km ? `every ${defs.km}km` : "",

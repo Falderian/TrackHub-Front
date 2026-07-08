@@ -140,3 +140,16 @@ export const computeRideMetrics = (
 
 	return { currentSpeed, maxSpeed, paceMinPerKm };
 };
+
+/** Format a ride duration from start/end ISO strings. Returns null if invalid. */
+export const rideDuration = (
+	startTime: string,
+	endTime: string | null,
+): string | null => {
+	if (!endTime) return null;
+	const diffSec = Math.floor(
+		(new Date(endTime).getTime() - new Date(startTime).getTime()) / 1000,
+	);
+	if (diffSec <= 0) return null;
+	return fmtTime(diffSec);
+};

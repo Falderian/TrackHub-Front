@@ -8,13 +8,13 @@ import {
 	Text,
 	useTheme,
 } from "react-native-paper";
+import { getDefaults } from "../helpers/maintenance";
 import type {
 	MaintenanceAction,
 	MaintenanceType,
 	MaintenanceTypeInfo,
 } from "../types";
 import { BRAKE_PAD_MATERIALS, FORK_TYPES } from "../types";
-import { getDefaults } from "./MaintenanceStatusCard";
 
 const TYPE_INFO: Record<string, MaintenanceTypeInfo> = {};
 for (const t of [

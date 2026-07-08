@@ -2,17 +2,17 @@ import { StyleSheet, View } from "react-native";
 import { Divider, Icon, Surface, Text, useTheme } from "react-native-paper";
 import type { DetailStat } from "../hooks/useRideDetail";
 
+function chunk<T>(arr: T[], size: number): T[][] {
+	const out: T[][] = [];
+	for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+	return out;
+}
+
 interface Props {
 	distanceKm: string;
 	duration: string;
 	elevationGain: string;
 	details: DetailStat[];
-}
-
-function chunk<T>(arr: T[], size: number): T[][] {
-	const out: T[][] = [];
-	for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
-	return out;
 }
 
 const StatCell = ({
@@ -123,7 +123,7 @@ export default function RideStatsCard({
 			{/* ── Detail grid ──────────────────────────────── */}
 
 			{rows.map((row, ri) => (
-				<View key={row.toString()} style={styles.gridRow}>
+				<View key={row.map((d) => d.label).join("-")} style={styles.gridRow}>
 					<StatCell
 						d={row[0]}
 						borderRight={row.length === 2}

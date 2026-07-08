@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import type { Ride } from "../types";
 
 const LOCAL_RIDES_KEY = "@trackhub/local-rides";
 
@@ -33,4 +34,22 @@ export async function loadLocalRides(): Promise<LocalRide[]> {
 
 export async function clearLocalRides(): Promise<void> {
 	await AsyncStorage.removeItem(LOCAL_RIDES_KEY);
+}
+
+/** Map a local ride to the API Ride shape (userId 0 sentinel). */
+export function toRide(l: LocalRide): Ride {
+	return {
+		id: l.localId,
+		userId: 0,
+		title: l.title,
+		startTime: l.startTime,
+		endTime: l.endTime,
+		distance: l.distance,
+		avgSpeed: l.avgSpeed,
+		maxSpeed: l.maxSpeed,
+		elevationGain: l.elevationGain,
+		elevationLoss: l.elevationLoss,
+		createdAt: l.completedAt,
+		updatedAt: l.completedAt,
+	};
 }
