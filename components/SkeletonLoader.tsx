@@ -201,6 +201,53 @@ export function SkeletonRideDetail() {
 	);
 }
 
+export function SkeletonProfile() {
+	return (
+		<View style={skel.container}>
+			{/* Nav bar */}
+			<View
+				style={[
+					skel.profileNav,
+					{ paddingHorizontal: 16, paddingTop: 60, paddingBottom: 8 },
+				]}
+			>
+				<Pulse style={skel.backArrow} />
+				<Pulse style={[skel.lineMd, { width: "30%" }]} />
+			</View>
+
+			<View style={[skel.profileAvatarRow, { paddingHorizontal: 24 }]}>
+				<Pulse style={skel.profileAvatar} />
+				<View style={skel.headerText}>
+					<Pulse style={[skel.lineMd, { width: "50%" }]} />
+					<Pulse style={[skel.lineSm, { width: "65%" }]} />
+				</View>
+			</View>
+
+			<View style={{ paddingHorizontal: 24, marginVertical: 24 }}>
+				<Pulse style={{ height: 1, width: "100%" }} />
+			</View>
+
+			<View style={{ paddingHorizontal: 24, marginBottom: 12 }}>
+				<Pulse style={[skel.lineSm, { width: "25%" }]} />
+			</View>
+
+			<View style={[skel.statsRow, { paddingHorizontal: 24 }]}>
+				<Pulse style={skel.statCard} />
+				<Pulse style={skel.statCard} />
+				<Pulse style={skel.statCard} />
+			</View>
+
+			<View style={{ paddingHorizontal: 24, marginVertical: 24 }}>
+				<Pulse style={{ height: 1, width: "100%" }} />
+			</View>
+
+			<View style={{ paddingHorizontal: 24 }}>
+				<Pulse style={{ height: 44, borderRadius: 22 }} />
+			</View>
+		</View>
+	);
+}
+
 const skel = StyleSheet.create({
 	container: { flex: 1, paddingTop: 8 },
 	card: {
@@ -227,6 +274,20 @@ const skel = StyleSheet.create({
 		marginBottom: 24,
 	},
 	statCard: { flex: 1, height: 80, borderRadius: 14 },
+	profileNav: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 12,
+		marginBottom: 24,
+	},
+	backArrow: { width: 22, height: 22, borderRadius: 4 },
+	profileAvatarRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 20,
+		marginBottom: 8,
+	},
+	profileAvatar: { width: 80, height: 80, borderRadius: 40 },
 	lineSm: { height: 12, width: "100%" },
 	lineMd: { height: 16, width: "100%" },
 	lineLg: { height: 20, width: "100%" },

@@ -11,6 +11,9 @@ import {
 	useTheme,
 } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import ErrorBanner from "../components/ErrorBanner";
+import PermissionCheck from "../components/PermissionCheck";
+import { SkeletonProfile } from "../components/SkeletonLoader";
 import { useAuth } from "../contexts/auth";
 import { useRidesOverview } from "../hooks/queries";
 
@@ -20,7 +23,8 @@ export default function ProfileScreen() {
 	const scheme = useColorScheme();
 	const insets = useSafeAreaInsets();
 
-	const { stats, totalRides } = useRidesOverview();
+	const { stats, totalRides, isLoading, isError, errorMessage, retry } =
+		useRidesOverview(1);
 
 	const initials = user?.username?.slice(0, 2).toUpperCase() ?? "??";
 
@@ -41,87 +45,99 @@ export default function ProfileScreen() {
 				</Text>
 			</View>
 
-			<View style={styles.body}>
-				<View style={styles.avatarRow}>
-					<Avatar.Text
-						size={80}
-						label={initials}
-						color={colors.onPrimary}
-						style={{ backgroundColor: colors.primary }}
-					/>
-					<View style={styles.userInfo}>
-						<Text
-							variant="headlineSmall"
-							style={{ color: colors.onBackground, fontWeight: "700" }}
-						>
-							{user?.username ?? "—"}
-						</Text>
-						<Text
-							variant="bodyMedium"
-							style={{ color: colors.onSurfaceVariant }}
-						>
-							{user?.email ?? "—"}
-						</Text>
+			{isLoading ? (
+				<SkeletonProfile />
+			) : (
+				<View style={styles.body}>
+					{isError && <ErrorBanner message={errorMessage} onRetry={retry} />}
+
+					<View style={styles.avatarRow}>
+						<Avatar.Text
+							size={80}
+							label={initials}
+							color={colors.onPrimary}
+							style={{ backgroundColor: colors.primary }}
+						/>
+						<View style={styles.userInfo}>
+							<Text
+								variant="headlineSmall"
+								style={{ color: colors.onBackground, fontWeight: "700" }}
+							>
+								{user?.username ?? "—"}
+							</Text>
+							<Text
+								variant="bodyMedium"
+								style={{ color: colors.onSurfaceVariant }}
+							>
+								{user?.email ?? "—"}
+							</Text>
+						</View>
 					</View>
+
+					<Divider
+						style={[styles.divider, { backgroundColor: colors.outline }]}
+					/>
+
+					<Text
+						variant="titleSmall"
+						style={{
+							color: colors.onSurface,
+							fontWeight: "700",
+							marginBottom: 12,
+						}}
+					>
+						Your stats
+					</Text>
+
+					<View style={styles.statRow}>
+						<StatTile
+							label="Rides"
+							value={String(totalRides)}
+							color={colors.primary}
+						/>
+						<StatTile
+							label="Kilometres"
+							value={(stats?.totalKm ?? 0).toFixed(0)}
+							color={colors.onSurface}
+						/>
+						<StatTile
+							label="Hours"
+							value={((stats?.totalMin ?? 0) / 60).toFixed(1)}
+							color={colors.onSurface}
+						/>
+					</View>
+
+					<Divider
+						style={[styles.divider, { backgroundColor: colors.outline }]}
+					/>
+
+					<PermissionCheck />
+
+					<Divider
+						style={[styles.divider, { backgroundColor: colors.outline }]}
+					/>
+
+					<Button
+						mode="outlined"
+						icon="logout"
+						textColor={colors.error}
+						style={{ borderColor: colors.error }}
+						contentStyle={styles.logoutBtn}
+						onPress={() =>
+							Alert.alert("Logout", "Are you sure you want to logout?", [
+								{ text: "Cancel", style: "cancel" },
+								{
+									text: "Logout",
+									style: "destructive",
+									onPress: () => logout(),
+								},
+							])
+						}
+					>
+						Log out
+					</Button>
 				</View>
-
-				<Divider
-					style={[styles.divider, { backgroundColor: colors.outline }]}
-				/>
-
-				<Text
-					variant="titleSmall"
-					style={{
-						color: colors.onSurface,
-						fontWeight: "700",
-						marginBottom: 12,
-					}}
-				>
-					Your stats
-				</Text>
-
-				<View style={styles.statRow}>
-					<StatTile
-						label="Rides"
-						value={String(totalRides)}
-						color={colors.primary}
-					/>
-					<StatTile
-						label="Kilometres"
-						value={(stats?.totalKm ?? 0).toFixed(0)}
-						color={colors.onSurface}
-					/>
-					<StatTile
-						label="Hours"
-						value={((stats?.totalMin ?? 0) / 60).toFixed(1)}
-						color={colors.onSurface}
-					/>
-				</View>
-
-				<Divider
-					style={[styles.divider, { backgroundColor: colors.outline }]}
-				/>
-
-				<Button
-					mode="outlined"
-					icon="logout"
-					textColor={colors.error}
-					style={{ borderColor: colors.error }}
-					contentStyle={styles.logoutBtn}
-					onPress={() =>
-						Alert.alert("Logout", "Are you sure you want to logout?", [
-							{ text: "Cancel", style: "cancel" },
-							{
-								text: "Logout",
-								style: "destructive",
-								onPress: () => logout(),
-							},
-						])
-					}
-				>
-					Log out
-				</Button>
-			</View>
+			)}
 		</View>
 	);
 }

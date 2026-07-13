@@ -12,6 +12,7 @@ import {
 	useRecordMapUI,
 } from "../contexts/RecordUIContext";
 import { useRide } from "../hooks/useRide";
+import { promptBatteryExemption } from "../services/battery";
 import { requestPermissions } from "../services/location";
 
 function RecordLayout() {
@@ -33,6 +34,10 @@ function RecordLayout() {
 				);
 			}
 		})();
+	}, []);
+
+	useEffect(() => {
+		promptBatteryExemption();
 	}, []);
 
 	const initialCoords = useRef({ lat: 53.9006, lon: 27.559 });
