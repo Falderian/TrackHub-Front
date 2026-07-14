@@ -4,30 +4,14 @@ import { api } from "../services/api";
 import { saveLocalRide } from "../services/local-rides";
 import {
 	clearPersistedRide,
+	clearSyncRide,
+	flushAllPending,
 	getRideState,
+	initSyncRide,
 	type RideSummary,
+	restoreSyncState,
 } from "../services/location";
 import * as storage from "../services/storage";
-
-async function persistMeta(
-	rideId: number | null,
-	lastSyncedIndex: number,
-	overrides?: Partial<
-		Pick<storage.SyncMeta, "isCompleted" | "completedAt" | "finalStats">
-	>,
-) {
-	const meta: storage.SyncMeta = {
-		rideId,
-		lastSyncedIndex,
-		isCompleted: false,
-		completedAt: null,
-		finalStats: null,
-		...overrides,
-	};
-	await storage
-		.saveSyncMeta(meta)
-		.catch((err) => console.warn("[TrackHub] persistMeta failed:", err));
-}
 
 async function tryCreateRide(
 	startTime: string,
@@ -44,80 +28,37 @@ async function tryCreateRide(
 
 export function useRideSync(isActive: boolean) {
 	const rideIdRef = useRef<number | null>(null);
-	const lastFlushedRef = useRef(0);
-	const flushingRef = useRef(false);
+	const ridingRef = useRef(false);
 
+	// Restore sync state from previous crash/unfinished ride
 	useEffect(() => {
 		storage.loadSyncMeta().then((meta) => {
 			if (meta) {
 				rideIdRef.current = meta.rideId;
-				lastFlushedRef.current = meta.lastSyncedIndex;
+				restoreSyncState(meta.rideId, meta.lastSyncedIndex);
 			}
 		});
 	}, []);
 
-	const flush = useCallback(async () => {
-		const id = rideIdRef.current;
-		if (flushingRef.current) return;
-
-		const state = getRideState();
-		const points = state.locations.slice(lastFlushedRef.current);
-		if (points.length === 0) return;
-
-		if (!id) {
-			const newId = await tryCreateRide(
-				new Date(state.rideStartTime ?? Date.now()).toISOString(),
-			);
-			if (newId) {
-				rideIdRef.current = newId;
-			} else {
-				await persistMeta(null, lastFlushedRef.current);
-				return;
-			}
-		}
-
-		flushingRef.current = true;
-		try {
-			if (!rideIdRef.current) return;
-			await api.addTrackPoints(
-				rideIdRef.current,
-				points.map((p) => ({
-					latitude: p.latitude,
-					longitude: p.longitude,
-					timestamp: new Date(p.timestamp).toISOString(),
-					speed: p.speed ?? undefined,
-					elevation: p.elevation ?? undefined,
-				})),
-			);
-			lastFlushedRef.current += points.length;
-			await persistMeta(rideIdRef.current, lastFlushedRef.current);
-		} catch (err) {
-			console.warn("[TrackHub] flush failed:", err);
-			await persistMeta(rideIdRef.current, lastFlushedRef.current);
-		} finally {
-			flushingRef.current = false;
-		}
-	}, []);
-
+	// Track isActive → false transition to flush on pause
 	useEffect(() => {
-		if (!isActive) return;
-		const interval = setInterval(() => {
-			flush();
-		}, 15_000);
-		return () => clearInterval(interval);
-	}, [isActive, flush]);
+		if (!isActive && ridingRef.current) {
+			// Just paused — auto-flush will catch up on resume
+			// because lastSyncedIndex is preserved in the GPS task state
+		}
+		ridingRef.current = isActive;
+	}, [isActive]);
 
 	const beginRide = useCallback(async () => {
-		lastFlushedRef.current = 0;
-
 		const state = getRideState();
 		if (!state.rideStartTime) return;
 
 		const id = await tryCreateRide(new Date(state.rideStartTime).toISOString());
 		rideIdRef.current = id;
-		await persistMeta(id, 0);
 
-		if (!id) {
+		if (id) {
+			initSyncRide(id);
+		} else {
 			console.warn(
 				"[TrackHub] beginRide: backend unreachable — ride will sync when connection restores.",
 			);
@@ -126,13 +67,15 @@ export function useRideSync(isActive: boolean) {
 
 	const completeRide = useCallback(
 		async (summary: RideSummary): Promise<number | null> => {
-			await flush();
+			try {
+				await flushAllPending();
+			} catch {}
 
 			let id = rideIdRef.current;
 
 			if (!summary.trackPoints.length) {
+				clearSyncRide();
 				rideIdRef.current = null;
-				lastFlushedRef.current = 0;
 				await clearPersistedRide().catch(() => {});
 				await storage.clearSyncMeta().catch(() => {});
 				return null;
@@ -158,12 +101,6 @@ export function useRideSync(isActive: boolean) {
 				elevationGain: roundTo(summary.elevationGain, 2),
 				elevationLoss: roundTo(summary.elevationLoss, 2),
 			};
-
-			await persistMeta(id, lastFlushedRef.current, {
-				isCompleted: true,
-				completedAt: lastPoint.timestamp,
-				finalStats,
-			});
 
 			const didSync = Boolean(id);
 
@@ -213,12 +150,16 @@ export function useRideSync(isActive: boolean) {
 				);
 			}
 
+			clearSyncRide();
 			rideIdRef.current = null;
-			lastFlushedRef.current = 0;
 			return id;
 		},
-		[flush],
+		[],
 	);
 
-	return { flush, beginRide, completeRide };
+	return {
+		flush: flushAllPending,
+		beginRide,
+		completeRide,
+	};
 }

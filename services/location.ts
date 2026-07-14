@@ -1,7 +1,9 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Location from "expo-location";
 import { Barometer } from "expo-sensors";
 import * as TaskManager from "expo-task-manager";
 import { haversine } from "../helpers/ride";
+import { api } from "./api";
 import { clearActiveRide, loadActiveRide, saveActiveRide } from "./storage";
 
 const TASK_NAME = "TRACKHUB_LOCATION";
@@ -117,6 +119,92 @@ function passFilter(
 
 let droppedCount = 0;
 
+const SYNC_META_KEY = "@trackhub/sync-meta";
+
+let syncRideId: number | null = null;
+let lastSyncedIndex = 0;
+
+function persistSyncMeta() {
+	const meta = {
+		rideId: syncRideId,
+		lastSyncedIndex,
+		isCompleted: false,
+		completedAt: null,
+		finalStats: null,
+	};
+	AsyncStorage.setItem(SYNC_META_KEY, JSON.stringify(meta)).catch(() => {});
+}
+
+function tryFlushPoints() {
+	if (syncRideId === null) return;
+
+	const pending = state.locations.slice(lastSyncedIndex);
+	if (pending.length === 0) return;
+
+	const rideId = syncRideId;
+	const fromIndex = lastSyncedIndex;
+	const batch = pending.map((p) => ({
+		latitude: p.latitude,
+		longitude: p.longitude,
+		timestamp: new Date(p.timestamp).toISOString(),
+		speed: p.speed,
+		elevation: p.elevation,
+	}));
+
+	// Fire-and-forget. Упало — следующий GPS-тик ретраит естественно.
+	api
+		.addTrackPoints(rideId, batch)
+		.then(() => {
+			lastSyncedIndex = Math.max(lastSyncedIndex, fromIndex + batch.length);
+			persistSyncMeta();
+		})
+		.catch(() => {}); // молча, ретрай на следующем тике
+}
+
+export async function flushAllPending(): Promise<void> {
+	if (syncRideId === null) return;
+	const pending = state.locations.slice(lastSyncedIndex);
+	if (pending.length === 0) return;
+
+	try {
+		await api.addTrackPoints(
+			syncRideId,
+			pending.map((p) => ({
+				latitude: p.latitude,
+				longitude: p.longitude,
+				timestamp: new Date(p.timestamp).toISOString(),
+				speed: p.speed,
+				elevation: p.elevation,
+			})),
+		);
+		lastSyncedIndex += pending.length;
+		persistSyncMeta();
+	} catch (err) {
+		console.warn("[TrackHub] flushAllPending failed:", err);
+		throw err;
+	}
+}
+
+export function initSyncRide(rideId: number) {
+	syncRideId = rideId;
+	lastSyncedIndex = 0;
+	persistSyncMeta();
+}
+
+export function clearSyncRide() {
+	syncRideId = null;
+	lastSyncedIndex = 0;
+}
+
+export function getSyncState() {
+	return { rideId: syncRideId, lastSyncedIndex };
+}
+
+export function restoreSyncState(rideId: number | null, lastIdx: number) {
+	syncRideId = rideId;
+	lastSyncedIndex = lastIdx;
+}
+
 // ── Barometric altimeter ──────────────────────────────────────────
 
 let baroSubscription: { remove: () => void } | null = null;
@@ -189,6 +277,7 @@ TaskManager.defineTask(TASK_NAME, async ({ data, error }) => {
 	}
 
 	persistIfNeeded();
+	tryFlushPoints();
 	notify();
 });
 
